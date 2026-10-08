@@ -8,5 +8,6 @@ import { PositionGuard } from '../common/guards/position.guard';
   imports: [DatabaseModule],
   controllers: [StudentsController],
   providers: [StudentsService, PositionGuard],
+  exports: [StudentsService],
 })
 export class StudentsModule {}

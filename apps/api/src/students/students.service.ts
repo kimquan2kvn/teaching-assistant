@@ -67,6 +67,20 @@ export class StudentsService {
     return student;
   }
 
+  // Dùng bởi các module khác (điểm danh, vi phạm/điểm cộng) để chặn ghi dữ liệu cho học sinh KHÔNG thuộc lớp
+  // đang thao tác — cùng lý do với findInClassOrThrow: PositionGuard/PositionOwnerGuard chỉ xác nhận người gọi
+  // giữ đúng vị trí của 1 lớp, không xác nhận studentId trong body có THẬT SỰ thuộc lớp đó hay không.
+  async verifyAllInClass(classId: string, studentIds: string[]): Promise<void> {
+    const validIds = studentIds.filter((id) => Types.ObjectId.isValid(id));
+    if (validIds.length !== studentIds.length) {
+      throw new NotFoundException('Không tìm thấy học sinh trong lớp này');
+    }
+    const count = await this.studentModel.countDocuments({ _id: { $in: validIds }, classId }).exec();
+    if (count !== studentIds.length) {
+      throw new NotFoundException('Không tìm thấy học sinh trong lớp này');
+    }
+  }
+
   async parsePreview(buffer: Buffer): Promise<ImportPreviewRow[]> {
     const workbook = new ExcelJS.Workbook();
     try {

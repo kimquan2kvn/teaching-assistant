@@ -229,4 +229,40 @@ describe('ConductLog (e2e)', () => {
     expect(row.score).toBe(125);
     expect(row.label).toBe('Xuất sắc');
   });
+
+  it('không ghi được vi phạm/điểm cộng cho học sinh KHÔNG thuộc lớp của position đó (dù biết đúng id học sinh lớp khác)', async () => {
+    const classA = await createClassAsHomeroom('gvcn.cl-e1', '10B5');
+    const classB = await createClassAsHomeroom('gvcn.cl-e2', '10B6');
+    const homeroomIdA = await getHomeroomPositionId(classA.classId);
+    const studentInClassB = await createStudent(classB.classId, classB.token, 'Học sinh lớp B');
+
+    await request(app.getHttpServer())
+      .post(`/positions/${homeroomIdA}/conduct-logs`)
+      .set('Authorization', `Bearer ${classA.token}`)
+      .send({ studentId: studentInClassB, kind: 'MERIT', points: 5, note: 'x' })
+      .expect(404);
+  });
+
+  it('xếp loại rèn luyện: học sinh KHÔNG có vi phạm/điểm cộng trong tuần vẫn xuất hiện với điểm 100', async () => {
+    const { token, classId } = await createClassAsHomeroom('gvcn.cl-f', '10B7');
+    const studentWithLogs = await createStudent(classId, token, 'Học sinh có ghi nhận');
+    const studentClean = await createStudent(classId, token, 'Học sinh sạch tuần này');
+    const homeroomId = await getHomeroomPositionId(classId);
+
+    await request(app.getHttpServer())
+      .post(`/positions/${homeroomId}/conduct-logs`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ studentId: studentWithLogs, kind: 'VIOLATION', points: 5, note: 'Trễ' })
+      .expect(201);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const ratingRes = await request(app.getHttpServer())
+      .get(`/classes/${classId}/conduct-rating?date=${today}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const cleanRow = ratingRes.body.find((r: { studentId: string }) => r.studentId === studentClean);
+    expect(cleanRow).toBeDefined();
+    expect(cleanRow.score).toBe(100);
+    expect(cleanRow.label).toBe('Xuất sắc');
+  });
 });

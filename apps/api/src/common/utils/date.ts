@@ -24,3 +24,15 @@ export function getIsoWeekStart(date: Date): Date {
   monday.setUTCHours(0, 0, 0, 0);
   return monday;
 }
+
+const VIETNAM_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+// Dùng cho mốc thời gian SERVER ghi nhận ("bây giờ"), KHÔNG dùng cho 1 chuỗi ngày (yyyy-mm-dd) người dùng tự
+// chọn — chuỗi ngày đã là 1 ngày lịch không mơ hồ, không cần quy đổi múi giờ. `getIsoWeekStart` thuần UTC tính
+// sai cho khoảng 00:00-07:00 giờ Việt Nam mỗi sáng Thứ Hai (vẫn còn là Chủ Nhật theo UTC) — hàm này quy đổi
+// sang giờ Việt Nam (UTC+7) trước khi tìm ranh giới tuần, rồi quy đổi ngược lại thành mốc UTC thật.
+export function getIsoWeekStartVN(date: Date): Date {
+  const shifted = new Date(date.getTime() + VIETNAM_UTC_OFFSET_MS);
+  const weekStartShifted = getIsoWeekStart(shifted);
+  return new Date(weekStartShifted.getTime() - VIETNAM_UTC_OFFSET_MS);
+}

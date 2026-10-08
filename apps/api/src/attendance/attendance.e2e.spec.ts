@@ -200,4 +200,56 @@ describe('Attendance (e2e)', () => {
       .set('Authorization', `Bearer ${outsiderToken}`)
       .expect(403);
   });
+
+  it('không ghi được điểm danh cho học sinh KHÔNG thuộc lớp của position đó (dù biết đúng id học sinh lớp khác)', async () => {
+    const classA = await createClassAsHomeroom('gvcn.att-d1', '10A4');
+    const classB = await createClassAsHomeroom('gvcn.att-d2', '10A5');
+    const homeroomIdA = await getHomeroomPositionId(classA.classId);
+    const studentInClassB = await createStudent(classB.classId, classB.token, 'Học sinh lớp B');
+
+    await request(app.getHttpServer())
+      .put(`/positions/${homeroomIdA}/attendance?date=2026-01-19`)
+      .set('Authorization', `Bearer ${classA.token}`)
+      .send({ entries: [{ studentId: studentInClassB, status: 'LATE' }] })
+      .expect(404);
+  });
+
+  it('tổng hợp điểm danh theo lớp (summary) chỉ tính theo vị trí HOMEROOM, học sinh không bị ghi coi là Có mặt', async () => {
+    const { token: gvcnToken, classId, code } = await createClassAsHomeroom('gvcn.att-f', '10A7');
+    const { token: gvbmToken } = await registerAndPromote('gvbm.att-f', 'TEACHER');
+    const subjectPositionId = await joinAsSubject(code, gvbmToken, 'Toán');
+    const homeroomId = await getHomeroomPositionId(classId);
+    const s1 = await createStudent(classId, gvcnToken, 'HS 1');
+    await createStudent(classId, gvcnToken, 'HS 2'); // không ghi gì -> mặc định Có mặt
+
+    await request(app.getHttpServer())
+      .put(`/positions/${homeroomId}/attendance?date=2026-01-19`)
+      .set('Authorization', `Bearer ${gvcnToken}`)
+      .send({ entries: [{ studentId: s1, status: 'LATE' }] })
+      .expect(200);
+    // Ghi UNEXCUSED cho s1 ở vị trí SUBJECT (môn Toán) — KHÔNG được tính vào summary của lớp (chỉ tính HOMEROOM).
+    await request(app.getHttpServer())
+      .put(`/positions/${subjectPositionId}/attendance?date=2026-01-19`)
+      .set('Authorization', `Bearer ${gvbmToken}`)
+      .send({ entries: [{ studentId: s1, status: 'UNEXCUSED' }] })
+      .expect(200);
+
+    const summaryRes = await request(app.getHttpServer())
+      .get(`/classes/${classId}/attendance/summary?date=2026-01-19`)
+      .set('Authorization', `Bearer ${gvcnToken}`)
+      .expect(200);
+    expect(summaryRes.body).toEqual({ PRESENT: 1, EXCUSED: 0, LATE: 1, UNEXCUSED: 0 });
+  });
+
+  it('không chấp nhận danh sách điểm danh có studentId trùng lặp trong cùng 1 request', async () => {
+    const { token, classId } = await createClassAsHomeroom('gvcn.att-e', '10A6');
+    const homeroomId = await getHomeroomPositionId(classId);
+    const studentId = await createStudent(classId, token, 'Học sinh E');
+
+    await request(app.getHttpServer())
+      .put(`/positions/${homeroomId}/attendance?date=2026-01-19`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ entries: [{ studentId, status: 'LATE' }, { studentId, status: 'EXCUSED' }] })
+      .expect(400);
+  });
 });
