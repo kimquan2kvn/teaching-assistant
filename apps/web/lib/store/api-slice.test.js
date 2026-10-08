@@ -1,6 +1,3 @@
-/**
- * @jest-environment node
- */
 import { makeStore } from './store';
 import { apiSlice } from './api-slice';
 
