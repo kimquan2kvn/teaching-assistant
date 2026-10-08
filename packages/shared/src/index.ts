@@ -10,3 +10,5 @@ export * from './schemas/student.schema';
 export * from './constants/conduct';
 export * from './schemas/attendance.schema';
 export * from './schemas/conduct.schema';
+export * from './schemas/punishment.schema';
+export * from './schemas/school-config.schema';
