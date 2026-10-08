@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { joinClassSchema, reassignPositionSchema } from '@so-chu-nhiem/shared';
 import type { JoinClassInput, ReassignPositionInput } from '@so-chu-nhiem/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -13,6 +13,11 @@ import { PositionsService } from './positions.service';
 @Roles('TEACHER', 'ADMIN')
 export class PositionsController {
   constructor(private readonly positionsService: PositionsService) {}
+
+  @Get('mine')
+  async mine(@CurrentUser() user: { id: string }) {
+    return this.positionsService.listMine(user.id);
+  }
 
   @Post('join')
   async join(

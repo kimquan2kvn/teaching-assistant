@@ -190,4 +190,83 @@ describe('Positions (e2e)', () => {
       .send({ teacherId: 'cung-khong-phai-id' })
       .expect(400);
   });
+
+  describe('GET /positions/mine', () => {
+    it('giáo viên giữ 2 vị trí ở 2 lớp khác nhau → trả đúng 2 phần tử kèm đúng class.code/class.name', async () => {
+      const { token: teacherToken } = await registerAndPromote('gv.mine-2lop', 'TEACHER');
+
+      const classRes1 = await request(app.getHttpServer())
+        .post('/classes')
+        .set('Authorization', `Bearer ${teacherToken}`)
+        .send({ name: '10B1', claimHomeroom: true });
+      const code1 = classRes1.body.class.code as string;
+
+      const classRes2 = await request(app.getHttpServer())
+        .post('/classes')
+        .set('Authorization', `Bearer ${teacherToken}`)
+        .send({ name: '10B2', claimHomeroom: false });
+      const code2 = classRes2.body.class.code as string;
+      await request(app.getHttpServer())
+        .post('/positions/join')
+        .set('Authorization', `Bearer ${teacherToken}`)
+        .send({ code: code2, type: 'SUBJECT', subject: 'Sinh học' })
+        .expect(201);
+
+      const res = await request(app.getHttpServer())
+        .get('/positions/mine')
+        .set('Authorization', `Bearer ${teacherToken}`)
+        .expect(200);
+
+      expect(res.body).toHaveLength(2);
+      const byClassCode = Object.fromEntries(res.body.map((p: any) => [p.class.code, p]));
+      expect(byClassCode[code1]).toMatchObject({
+        type: 'HOMEROOM',
+        class: { code: code1, name: '10B1' },
+      });
+      expect(byClassCode[code2]).toMatchObject({
+        type: 'SUBJECT',
+        subject: 'Sinh học',
+        class: { code: code2, name: '10B2' },
+      });
+    });
+
+    it('giáo viên không giữ vị trí nào → trả mảng rỗng (không lỗi)', async () => {
+      const { token } = await registerAndPromote('gv.mine-rong', 'TEACHER');
+
+      const res = await request(app.getHttpServer())
+        .get('/positions/mine')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
+    it('vị trí đã ngừng phụ trách (holderId: null) không xuất hiện trong kết quả của người vừa ngừng', async () => {
+      const { token: creatorToken } = await registerAndPromote('gv.lop-mine-release', 'TEACHER');
+      const classRes = await request(app.getHttpServer())
+        .post('/classes')
+        .set('Authorization', `Bearer ${creatorToken}`)
+        .send({ name: '10B3', claimHomeroom: false });
+      const code = classRes.body.class.code as string;
+
+      const { token: holderToken } = await registerAndPromote('gv.mine-se-ngung', 'TEACHER');
+      const joinRes = await request(app.getHttpServer())
+        .post('/positions/join')
+        .set('Authorization', `Bearer ${holderToken}`)
+        .send({ code, type: 'SUBJECT', subject: 'Địa lý' });
+      const positionId = joinRes.body._id as string;
+
+      await request(app.getHttpServer())
+        .post(`/positions/${positionId}/release`)
+        .set('Authorization', `Bearer ${holderToken}`)
+        .expect(201);
+
+      const res = await request(app.getHttpServer())
+        .get('/positions/mine')
+        .set('Authorization', `Bearer ${holderToken}`)
+        .expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+  });
 });

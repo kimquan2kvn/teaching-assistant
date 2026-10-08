@@ -3,8 +3,16 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import type { JoinClassInput } from '@so-chu-nhiem/shared';
 import { Position } from '../database/schemas/position.schema';
+import { Class } from '../database/schemas/class.schema';
 import { User } from '../database/schemas/user.schema';
 import { ClassesService } from '../classes/classes.service';
+
+export interface MyPositionView {
+  id: string;
+  type: 'HOMEROOM' | 'SUBJECT';
+  subject?: string;
+  class: { id: string; code: string; name: string };
+}
 
 @Injectable()
 export class PositionsService {
@@ -13,6 +21,24 @@ export class PositionsService {
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly classesService: ClassesService,
   ) {}
+
+  async listMine(teacherId: string): Promise<MyPositionView[]> {
+    const positions = await this.positionModel
+      .find({ holderId: teacherId })
+      .populate<{ classId: Class }>('classId', 'code name')
+      .exec();
+
+    return positions.map((p) => ({
+      id: String(p._id),
+      type: p.type,
+      subject: p.subject,
+      class: {
+        id: String(p.classId._id),
+        code: p.classId.code,
+        name: p.classId.name,
+      },
+    }));
+  }
 
   async join(teacherId: string, input: JoinClassInput): Promise<Position> {
     const { class: klass } = await this.classesService.findByCode(input.code);
