@@ -15,3 +15,13 @@ test('mục ứng với pathname hiện tại có style active (chữ vàng)', (
   const active = screen.getByText('Bảng điều khiển');
   expect(active.closest('a')).toHaveClass('text-sidebar-active-fg');
 });
+
+test('mỗi mục điều hướng có icon SVG thật, không emoji/icon font', () => {
+  render(<Sidebar />);
+  const links = screen.getAllByRole('link');
+  expect(links.length).toBeGreaterThan(0);
+  links.forEach((link) => {
+    const icon = link.querySelector('svg');
+    expect(icon).not.toBeNull();
+  });
+});

@@ -11,6 +11,7 @@ import { Student, StudentSchema } from './schemas/student.schema';
   imports: [
     MongooseModule.forRoot(
       process.env.MONGODB_URI ?? 'mongodb://localhost:27017/so_chu_nhiem?replicaSet=rs0',
+      { lazyConnection: true },
     ),
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
