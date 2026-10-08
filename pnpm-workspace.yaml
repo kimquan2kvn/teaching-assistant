@@ -3,4 +3,5 @@ packages:
   - "packages/*"
 allowBuilds:
   '@nestjs/core': true
+  mongodb-memory-server: true
   unrs-resolver: true
