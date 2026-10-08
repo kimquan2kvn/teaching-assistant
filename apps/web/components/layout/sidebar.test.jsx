@@ -47,15 +47,15 @@ test('mỗi mục điều hướng có icon SVG thật, không emoji/icon font',
 
 test('mục có roles=["ADMIN"] ẨN với role TEACHER', () => {
   renderWithRole('TEACHER');
-  expect(screen.queryByText('Mục chỉ ADMIN (test)')).not.toBeInTheDocument();
+  expect(screen.queryByText('Quản lý giáo viên')).not.toBeInTheDocument();
 });
 
 test('mục có roles=["ADMIN"] HIỆN với role ADMIN', () => {
   renderWithRole('ADMIN');
-  expect(screen.getByText('Mục chỉ ADMIN (test)')).toBeInTheDocument();
+  expect(screen.getByText('Quản lý giáo viên')).toBeInTheDocument();
 });
 
 test('mục có roles=["ADMIN"] ẨN khi chưa biết role (user=null, chưa khôi phục phiên xong)', () => {
   renderWithRole(null);
-  expect(screen.queryByText('Mục chỉ ADMIN (test)')).not.toBeInTheDocument();
+  expect(screen.queryByText('Quản lý giáo viên')).not.toBeInTheDocument();
 });

@@ -60,6 +60,23 @@ test('lúc mount, gọi /auth/refresh rồi /auth/me để khôi phục phiên n
   expect(capturedStore.getState().auth.accessToken).toBe('restored-token');
 });
 
+test('gọi /auth/me kèm đúng Authorization header của token vừa refresh được (không gọi "trần")', async () => {
+  global.fetch = jest
+    .fn()
+    .mockReturnValueOnce(jsonResponse(200, { accessToken: 'restored-token' }))
+    .mockReturnValueOnce(jsonResponse(200, { id: '1', username: 'gv1', role: 'TEACHER' }));
+
+  render(
+    <Providers>
+      <StoreProbe onStore={() => {}} />
+    </Providers>,
+  );
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  const meRequest = global.fetch.mock.calls[1][0];
+  expect(meRequest.headers.get('authorization')).toBe('Bearer restored-token');
+});
+
 test('refresh thất bại lúc mount thì auth vẫn giữ null, không gọi /auth/me', async () => {
   global.fetch = jest.fn().mockReturnValueOnce(jsonResponse(401, {}));
 

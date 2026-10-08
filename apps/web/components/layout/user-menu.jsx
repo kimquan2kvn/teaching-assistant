@@ -3,7 +3,7 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { selectCurrentUser, clearCredentials } from '@/lib/store/auth-slice';
-import { useLogoutMutation } from '@/lib/store/api-slice';
+import { apiSlice, useLogoutMutation } from '@/lib/store/api-slice';
 import { Button } from '@/components/ui/button';
 
 export function UserMenu() {
@@ -19,6 +19,7 @@ export function UserMenu() {
       await logout().unwrap();
     } finally {
       dispatch(clearCredentials());
+      dispatch(apiSlice.util.resetApiState());
       router.push('/dang-nhap');
     }
   }

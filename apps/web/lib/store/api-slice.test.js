@@ -68,3 +68,31 @@ test('gọi thẳng /auth/refresh và chính nó trả 401 thì không tự gọ
   await store.dispatch(apiSlice.endpoints.refresh.initiate());
   expect(global.fetch).toHaveBeenCalledTimes(1);
 });
+
+test.each([
+  ['login', () => apiSlice.endpoints.login.initiate({ username: 'gv1', password: 'sai' })],
+  ['register', () => apiSlice.endpoints.register.initiate({ username: 'gv1', password: 'x', fullName: 'A' })],
+])(
+  '%s trả 401 không tự gọi lại /auth/refresh, trả thẳng lỗi gốc cho caller',
+  async (_name, buildAction) => {
+    global.fetch.mockReturnValueOnce(jsonResponse(401, { message: 'Sai tên đăng nhập hoặc mật khẩu' }));
+    const store = makeStore();
+    const result = await store.dispatch(buildAction());
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(result.error.data).toEqual({ message: 'Sai tên đăng nhập hoặc mật khẩu' });
+  },
+);
+
+test('refresh thất bại thì xoá luôn cache RTK Query, không giữ dữ liệu phiên cũ', async () => {
+  global.fetch
+    .mockReturnValueOnce(jsonResponse(200, { id: '1', username: 'gv1' })) // me lần đầu thành công → có cache
+    .mockReturnValueOnce(jsonResponse(401, {})) // me lần 2 → 401
+    .mockReturnValueOnce(jsonResponse(401, { message: 'hết hạn' })); // refresh thất bại
+  const store = makeStore();
+  await store.dispatch(apiSlice.endpoints.me.initiate());
+  expect(apiSlice.endpoints.me.select()(store.getState()).data).toEqual({ id: '1', username: 'gv1' });
+
+  await store.dispatch(apiSlice.endpoints.me.initiate(undefined, { forceRefetch: true }));
+
+  expect(apiSlice.endpoints.me.select()(store.getState()).data).toBeUndefined();
+});
