@@ -3,6 +3,7 @@ import { Providers } from '@/components/providers';
 import { Sidebar } from '@/components/layout/sidebar';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { SearchBox } from '@/components/layout/search-box';
+import { UserMenu } from '@/components/layout/user-menu';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
@@ -35,6 +36,7 @@ export default function RootLayout({ children }) {
                 <div className="max-w-sm flex-1">
                   <SearchBox />
                 </div>
+                <UserMenu />
               </header>
               <main className="flex-1">{children}</main>
             </div>
