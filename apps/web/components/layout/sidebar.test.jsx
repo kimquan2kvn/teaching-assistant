@@ -23,7 +23,9 @@ function renderWithRole(role) {
 }
 
 test('render đủ 6 nhóm điều hướng với đúng nhãn', () => {
-  renderWithRole(null);
+  // ADMIN thấy mọi mục (kể cả mục đã gate role) nên là role duy nhất khiến cả 6 nhóm có ít
+  // nhất 1 mục hiển thị — Sidebar ẩn hẳn 1 nhóm nếu lọc role làm nhóm đó rỗng (xem sidebar.jsx).
+  renderWithRole('ADMIN');
   ['Tổng quan', 'Nền tảng', 'Kế hoạch dạy học', 'Lớp học hằng ngày', 'Học tập', 'Khác'].forEach((label) => {
     expect(screen.getByText(label)).toBeInTheDocument();
   });
@@ -58,4 +60,10 @@ test('mục có roles=["ADMIN"] HIỆN với role ADMIN', () => {
 test('mục có roles=["ADMIN"] ẨN khi chưa biết role (user=null, chưa khôi phục phiên xong)', () => {
   renderWithRole(null);
   expect(screen.queryByText('Quản lý giáo viên')).not.toBeInTheDocument();
+});
+
+test('mục "Lớp học" và "Học sinh" ẨN với role STUDENT', () => {
+  renderWithRole('STUDENT');
+  expect(screen.queryByText('Lớp học')).not.toBeInTheDocument();
+  expect(screen.queryByText('Học sinh')).not.toBeInTheDocument();
 });

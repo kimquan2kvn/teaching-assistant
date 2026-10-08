@@ -20,8 +20,8 @@ export const NAV_GROUPS = [
   {
     group: 'Nền tảng',
     items: [
-      { label: 'Lớp học', href: '/dang-phat-trien', icon: School },
-      { label: 'Học sinh', href: '/dang-phat-trien', icon: Users },
+      { label: 'Lớp học', href: '/lop-hoc', icon: School, roles: ['TEACHER', 'ADMIN'] },
+      { label: 'Học sinh', href: '/lop-hoc', icon: Users, roles: ['TEACHER', 'ADMIN'] },
     ],
   },
   {
@@ -49,7 +49,7 @@ export const NAV_GROUPS = [
     group: 'Khác',
     items: [
       { label: 'Cài đặt', href: '/dang-phat-trien', icon: Settings },
-      { label: 'Quản lý giáo viên', href: '/dang-phat-trien', icon: UserCog, roles: ['ADMIN'] },
+      { label: 'Quản lý giáo viên', href: '/quan-ly-giao-vien', icon: UserCog, roles: ['ADMIN'] },
     ],
   },
 ];
