@@ -46,6 +46,10 @@ export const NAV_GROUPS = [
   },
   {
     group: 'Khác',
-    items: [{ label: 'Cài đặt', href: '/dang-phat-trien', icon: Settings }],
+    items: [
+      { label: 'Cài đặt', href: '/dang-phat-trien', icon: Settings },
+      // TODO: thay bằng mục thật khi có tính năng giới hạn theo role (vd: Quản trị hệ thống).
+      { label: 'Mục chỉ ADMIN (test)', href: '/dang-phat-trien', icon: Settings, roles: ['ADMIN'] },
+    ],
   },
 ];
