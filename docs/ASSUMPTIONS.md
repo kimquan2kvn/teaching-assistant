@@ -60,3 +60,10 @@ Giả định về **nghiệp vụ** (business rules) sẽ được hỏi lại 
 - **Import Excel học sinh**: dùng `exceljs` (JS thuần, không cần build native, đọc/ghi .xlsx tốt).
 - **Test transaction/race condition**: dùng `mongodb-memory-server` ở chế độ **replica set** (bắt buộc để test
   transaction thật, không mock).
+- **Định dạng ngày sinh khi import Excel**: chấp nhận `dd/mm/yyyy` (định dạng phổ biến trong Excel tiếng Việt)
+  hoặc ISO `yyyy-mm-dd`; chuỗi không khớp 1 trong 2 dạng này bị báo lỗi ở bước preview thay vì âm thầm parse sai
+  (vd `new Date("15/03/2008")` tự hiểu theo kiểu Mỹ sẽ đổi ngày/tháng cho nhau).
+- **Giới hạn file/khối lượng import**: file Excel tối đa 5MB, `import-confirm` tối đa 2000 dòng/lần — không có
+  trong yêu cầu gốc, thêm để tránh 1 request đơn lẻ (vô tình hoặc cố ý) làm quá tải request body hoặc tạo hàng
+  loạt bản ghi không giới hạn. Có thể nới nếu trường thực tế cần nhập lớp > 2000 học sinh/lần (không hợp lý với
+  quy mô 1 lớp phổ thông nên chưa coi là giới hạn cần xem lại ngay).
