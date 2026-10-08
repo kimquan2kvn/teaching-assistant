@@ -90,3 +90,15 @@ Giả định về **nghiệp vụ** (business rules) sẽ được hỏi lại 
   tổng điểm tuần). Tháng/học kỳ (yêu cầu gốc có nhắc, mô tả là "trung bình các tuần") CHƯA làm ở Phase 2 vì
   chưa có tiêu chí test/API shape cụ thể nào được xác nhận — để lại cho lần cần dùng thật, lúc đó sẽ hỏi lại
   hình dạng API (vd FE cần trả về điểm trung bình hay cả danh sách từng tuần kèm theo).
+
+## Sub-project 2 (UI cho Phase 1)
+
+- **Ngày sinh học sinh trên roster — GVBM xem được, giống GVCN** (đã hỏi lại người dùng, xác nhận "Có, giống
+  GVCN"): bảng danh sách học sinh hiện cột ngày sinh cho mọi vị trí được phép xem lớp (GVCN, GVBM, ADMIN),
+  không ẩn field theo role ở tầng API hay FE. Chỉ khác nhau ở việc có nút "Sửa"/"Đánh dấu chuyển đi" hay không
+  (chỉ GVCN + ADMIN). Nếu sau này cần siết lại (vd chỉ GVCN thấy ngày sinh), đây là thay đổi tầng API (thêm
+  field-level filter theo role), không chỉ ẩn ở FE.
+- **3 endpoint đọc bổ sung coi là trong phạm vi sub-project 2** (không phải việc backend ngoài phạm vi): `GET
+  /positions/mine`, `GET /classes/:classId/detail`, `GET /admin/teachers/:id/positions` — thuần đọc dữ liệu,
+  không thêm schema/module Mongoose mới, nhưng bắt buộc phải có thì UI mới điều hướng được theo lớp (gap này
+  cũng chặn điều hướng của các module Phase 2 đã xây xong, không chỉ riêng sub-project này).
