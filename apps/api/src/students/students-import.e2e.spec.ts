@@ -72,15 +72,18 @@ describe('Students import (e2e)', () => {
     await app.close();
   });
 
+  let classNameCounter = 0;
+
   async function setupClassWithHomeroom(username: string) {
     const registerRes = await request(app.getHttpServer())
       .post('/auth/register')
       .send({ username, password: 'MatKhau123', fullName: username });
     const token = registerRes.body.accessToken as string;
+    classNameCounter += 1;
     const classRes = await request(app.getHttpServer())
       .post('/classes')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Lớp ${username}`, claimHomeroom: true });
+      .send({ name: `L${classNameCounter}`, claimHomeroom: true });
     return { token, classId: classRes.body.class._id as string };
   }
 
@@ -134,5 +137,72 @@ describe('Students import (e2e)', () => {
 
     const count = await studentModel.countDocuments({ classId });
     expect(count).toBe(3);
+  });
+
+  it('preview: ngày sinh sai định dạng được báo lỗi rõ ràng, KHÔNG âm thầm thành ngày khác', async () => {
+    const { token, classId } = await setupClassWithHomeroom('gvcn.import-baddate');
+    // "32/13/2008" không phải ngày hợp lệ ở bất kỳ cách đọc nào (ngày > 31, tháng > 12).
+    const buffer = await buildWorkbookBuffer([
+      { fullName: 'Học sinh ngày sai', dob: '32/13/2008' },
+      { fullName: 'Học sinh ngày đúng', dob: '15/03/2008' },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post(`/classes/${classId}/students/import-preview`)
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', buffer, 'hoc-sinh.xlsx')
+      .expect(201);
+
+    expect(res.body.rows[0].errors.length).toBeGreaterThan(0);
+    expect(res.body.rows[0].dob).toBeUndefined();
+    expect(res.body.rows[1].errors).toEqual([]);
+    expect(new Date(res.body.rows[1].dob).getUTCFullYear()).toBe(2008);
+  });
+
+  it('import-preview: thiếu file → 400 (không phải 500)', async () => {
+    const { token, classId } = await setupClassWithHomeroom('gvcn.import-nofile');
+    await request(app.getHttpServer())
+      .post(`/classes/${classId}/students/import-preview`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400);
+  });
+
+  it('import-preview: file không phải Excel hợp lệ → 400 (không phải 500)', async () => {
+    const { token, classId } = await setupClassWithHomeroom('gvcn.import-badfile');
+    await request(app.getHttpServer())
+      .post(`/classes/${classId}/students/import-preview`)
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', Buffer.from('đây không phải file excel'), 'khong-phai.xlsx')
+      .expect(400);
+  });
+
+  it('import-preview: file vượt quá giới hạn dung lượng → 413', async () => {
+    const { token, classId } = await setupClassWithHomeroom('gvcn.import-toobig');
+    const oversized = Buffer.alloc(6 * 1024 * 1024, 'a');
+    await request(app.getHttpServer())
+      .post(`/classes/${classId}/students/import-preview`)
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', oversized, 'qua-lon.xlsx')
+      .expect(413);
+  });
+
+  it('confirm: lỗi ghi giữa chừng (vd trùng khoá ở tầng DB) không để lại bản ghi nào nhờ transaction', async () => {
+    const { token, classId } = await setupClassWithHomeroom('gvcn.import-rollback');
+    // Tạo tạm 1 unique index để mô phỏng 1 lỗi ghi xảy ra GIỮA batch insertMany (vd: duplicate key, hoặc
+    // bất kỳ lỗi server-side nào khác) — zod/service đã validate hết các field nên đây là cách duy nhất để
+    // thực sự chứng minh insertMany không để lại ghi 1 phần khi KHÔNG dùng transaction.
+    await studentModel.collection.createIndex({ classId: 1, fullName: 1 }, { unique: true, name: 'test_unique_fullname' });
+    try {
+      await request(app.getHttpServer())
+        .post(`/classes/${classId}/students/import-confirm`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ rows: [{ fullName: 'Trùng tên' }, { fullName: 'Trùng tên' }] })
+        .expect(400);
+
+      const count = await studentModel.countDocuments({ classId });
+      expect(count).toBe(0);
+    } finally {
+      await studentModel.collection.dropIndex('test_unique_fullname');
+    }
   });
 });

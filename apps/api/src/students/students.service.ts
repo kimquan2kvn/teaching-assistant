@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model, Types } from 'mongoose';
 import ExcelJS from 'exceljs';
 import { Student } from '../database/schemas/student.schema';
 import type { CreateStudentInput, UpdateStudentInput, MarkTransferredInput } from '@so-chu-nhiem/shared';
@@ -12,9 +12,33 @@ export interface ImportPreviewRow {
   errors: string[];
 }
 
+// Chấp nhận "dd/mm/yyyy" (định dạng ngày phổ biến trong file Excel tiếng Việt) hoặc ISO "yyyy-mm-dd".
+// `new Date(raw)` một mình là không đủ: nó parse "dd/mm/yyyy" theo kiểu Mỹ (mm/dd/yyyy) nên âm thầm đổi
+// ngày/tháng cho nhau, và với chuỗi nó không nhận ra sẽ trả về Invalid Date mà KHÔNG throw — nếu không bị
+// bắt riêng, Invalid Date đó lọt qua tới tận lúc JSON.stringify ở response (thành `null`) mà preview không
+// báo lỗi gì cả.
+function parseVietnameseDate(raw: string): Date | undefined {
+  const ddmmyyyy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(raw);
+  if (ddmmyyyy) {
+    const day = Number(ddmmyyyy[1]);
+    const month = Number(ddmmyyyy[2]);
+    const year = Number(ddmmyyyy[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    // Date.UTC tự "lăn" ngày/tháng vượt giới hạn (vd tháng 13 → tháng 1 năm sau) thay vì báo lỗi — phải so
+    // lại xem có đúng là ngày/tháng/năm đã nhập hay không để phát hiện trường hợp đó.
+    const rolledOver = date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day;
+    return rolledOver ? undefined : date;
+  }
+  const iso = new Date(raw);
+  return Number.isNaN(iso.getTime()) ? undefined : iso;
+}
+
 @Injectable()
 export class StudentsService {
-  constructor(@InjectModel(Student.name) private readonly studentModel: Model<Student>) {}
+  constructor(
+    @InjectModel(Student.name) private readonly studentModel: Model<Student>,
+    @InjectConnection() private readonly connection: Connection,
+  ) {}
 
   async list(classId: string, status: 'ACTIVE' | 'ALL' = 'ACTIVE'): Promise<Student[]> {
     const filter: Record<string, unknown> = { classId };
@@ -45,9 +69,16 @@ export class StudentsService {
 
   async parsePreview(buffer: Buffer): Promise<ImportPreviewRow[]> {
     const workbook = new ExcelJS.Workbook();
-    // exceljs' bundled type defs predate the current @types/node Buffer<ArrayBufferLike> generic.
-    await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    try {
+      // exceljs' bundled type defs predate the current @types/node Buffer<ArrayBufferLike> generic.
+      await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    } catch {
+      throw new BadRequestException('File không đúng định dạng Excel (.xlsx)');
+    }
     const sheet = workbook.worksheets[0];
+    if (!sheet) {
+      throw new BadRequestException('File Excel không có sheet nào');
+    }
     const rows: ImportPreviewRow[] = [];
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return;
@@ -55,7 +86,9 @@ export class StudentsService {
       const dobRaw = String(row.getCell(2).text ?? '').trim();
       const errors: string[] = [];
       if (!fullName) errors.push('Họ và tên không được để trống');
-      rows.push({ rowNumber, fullName, dob: dobRaw ? new Date(dobRaw) : undefined, errors });
+      const dob = dobRaw ? parseVietnameseDate(dobRaw) : undefined;
+      if (dobRaw && !dob) errors.push('Ngày sinh không hợp lệ (định dạng dd/mm/yyyy)');
+      rows.push({ rowNumber, fullName, dob, errors });
     });
     return rows;
   }
@@ -66,7 +99,21 @@ export class StudentsService {
       throw new BadRequestException(`Dòng thứ ${invalidIndex + 1} thiếu họ và tên, không lưu được`);
     }
     const docs = rows.map((r) => ({ classId, fullName: r.fullName, dob: r.dob }));
-    return this.studentModel.insertMany(docs, { ordered: true });
+    const session = await this.connection.startSession();
+    try {
+      let created: Student[] = [];
+      await session.withTransaction(async () => {
+        created = await this.studentModel.insertMany(docs, { session, ordered: true });
+      });
+      return created;
+    } catch (err) {
+      if ((err as { code?: number })?.code === 11000) {
+        throw new BadRequestException('Dữ liệu import có dòng trùng lặp, không lưu được dòng nào');
+      }
+      throw err;
+    } finally {
+      await session.endSession();
+    }
   }
 
   // GVCN chỉ được đọc/sửa classId của đúng lớp họ đang giữ HOMEROOM (đã kiểm tra ở PositionGuard theo

@@ -1,4 +1,16 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   createStudentSchema,
@@ -18,6 +30,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { PositionGuard } from '../common/guards/position.guard';
 import { RequirePosition } from '../common/decorators/require-position.decorator';
 import { StudentsService } from './students.service';
+
+const MAX_IMPORT_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 @Controller('classes/:classId/students')
 @UseGuards(JwtAuthGuard, RolesGuard, PositionGuard)
@@ -61,8 +75,11 @@ export class StudentsController {
 
   @Post('import-preview')
   @RequirePosition('HOMEROOM')
-  @UseInterceptors(FileInterceptor('file'))
-  async importPreview(@UploadedFile() file: Express.Multer.File) {
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_IMPORT_FILE_SIZE_BYTES, files: 1 } }))
+  async importPreview(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Chưa chọn file để import');
+    }
     const rows = await this.studentsService.parsePreview(file.buffer);
     return { rows };
   }
