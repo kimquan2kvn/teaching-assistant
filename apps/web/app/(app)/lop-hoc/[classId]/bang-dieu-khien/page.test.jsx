@@ -19,6 +19,12 @@ jest.mock('@/lib/store/students-api', () => ({
   useGetStudentsQuery: (...args) => getStudentsMock(...args),
 }));
 
+const getConductCatalogMock = jest.fn();
+jest.mock('@/lib/store/conduct-catalog-api', () => ({
+  ...jest.requireActual('@/lib/store/conduct-catalog-api'),
+  useGetConductCatalogQuery: (...args) => getConductCatalogMock(...args),
+}));
+
 const STUDENTS = [
   { _id: 's1', fullName: 'Nguyễn Văn A', status: 'ACTIVE' },
   { _id: 's2', fullName: 'Trần Thị B', status: 'ACTIVE' },
@@ -60,7 +66,9 @@ function renderPage() {
 beforeEach(() => {
   getClassDashboardMock.mockReset();
   getStudentsMock.mockReset();
+  getConductCatalogMock.mockReset();
   getStudentsMock.mockReturnValue({ data: STUDENTS, isLoading: false });
+  getConductCatalogMock.mockReturnValue({ data: [{ _id: 'cat-1', label: 'Nói chuyện riêng' }] });
   getClassDashboardMock.mockReturnValue({ data: DASHBOARD_DATA, isLoading: false, isError: false, error: undefined });
 });
 
@@ -86,6 +94,24 @@ test('hiện đủ 4 khối: thống kê điểm danh, vi phạm/điểm cộng 
   expect(screen.getByText(/Chưa nộp/)).toBeInTheDocument();
 });
 
+test('vi phạm/điểm cộng ghi từ danh mục (không có note) hiện đúng tên danh mục, không để trống', () => {
+  getClassDashboardMock.mockReturnValue({
+    data: {
+      ...DASHBOARD_DATA,
+      recentConductLogs: [
+        { _id: 'log-catalog', studentId: 's1', points: -5, catalogItemId: 'cat-1', date: '2026-10-08T00:00:00.000Z' },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+    error: undefined,
+  });
+
+  renderPage();
+
+  expect(screen.getByText('Nói chuyện riêng')).toBeInTheDocument();
+});
+
 test('ghi rõ chỉ điểm danh + xếp loại tuần đổi theo ngày, 2 khối còn lại không phụ thuộc ngày', () => {
   renderPage();
   expect(
@@ -104,6 +130,15 @@ test('đổi ngày (nút "Ngày sau") gọi lại useGetClassDashboardQuery vớ
 
   const lastCallArgs = getClassDashboardMock.mock.calls.at(-1)[0];
   expect(lastCallArgs.date).not.toBe(initialDate);
+});
+
+test('ngày mặc định là hôm nay theo giờ ĐỊA PHƯƠNG, không lùi 1 ngày vào buổi sáng sớm (giờ VN UTC+7)', () => {
+  // 2026-10-08T23:30:00Z = 06:30 sáng 2026-10-09 giờ VN — nếu dùng toISOString().slice(0,10) sẽ mặc định nhầm
+  // sang "2026-10-08", khiến dashboard hiện thống kê điểm danh/tuần xếp loại của NGÀY/TUẦN TRƯỚC.
+  jest.useFakeTimers().setSystemTime(new Date('2026-10-08T23:30:00.000Z'));
+  renderPage();
+  expect(getClassDashboardMock.mock.calls.at(-1)[0].date).toBe('2026-10-09');
+  jest.useRealTimers();
 });
 
 test('query lỗi 403 hiện "Bạn không có quyền xem lớp này", không render 4 khối', () => {

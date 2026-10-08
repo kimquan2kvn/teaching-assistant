@@ -5,17 +5,14 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useGetClassDashboardQuery } from '@/lib/store/dashboard-api';
 import { useGetStudentsQuery } from '@/lib/store/students-api';
+import { useGetConductCatalogQuery } from '@/lib/store/conduct-catalog-api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { buildIdNameMap, formatDate, formatSignedPoints } from '@/lib/utils';
+import { buildIdNameMap, formatDate, formatSignedPoints, todayDateOnly } from '@/lib/utils';
 
 const ATTENDANCE_LABELS = { PRESENT: 'Có mặt', EXCUSED: 'Phép', LATE: 'Muộn', UNEXCUSED: 'Không phép' };
 // Binance convention đã dùng ở trang điểm danh: xanh = có mặt, đỏ = vắng không phép, phép/muộn trung tính.
 const ATTENDANCE_VARIANTS = { PRESENT: 'success', EXCUSED: 'muted', LATE: 'muted', UNEXCUSED: 'danger' };
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 // Cộng/trừ ngày trên chuỗi yyyy-mm-dd bằng mốc UTC-midnight để tránh lệch ngày theo múi giờ trình duyệt —
 // cùng lý do formatDate ở utils.js dùng timeZone: 'UTC'.
@@ -43,13 +40,15 @@ function splitTopBottom(conductRating) {
 // dieu-khien`) để trang chủ `/` cũng tái dùng được NGUYÊN nội dung này khi người dùng chỉ giữ đúng 1 lớp (xem
 // `app/(app)/page.jsx`), tránh viết lặp lại cùng 1 khối UI ở 2 nơi.
 export function ClassDashboardContent({ classId }) {
-  const [date, setDate] = useState(todayStr());
+  const [date, setDate] = useState(todayDateOnly);
 
   const { data, isLoading, isError, error } = useGetClassDashboardQuery({ classId, date });
   // status: 'ALL' (không phải 'ACTIVE') vì đây là trang hiển thị LỊCH SỬ (vi phạm/chép phạt gần đây có thể
   // thuộc về học sinh đã chuyển lớp) — đúng quy ước đã nêu ở Bước 1/6 của plan.
   const { data: students } = useGetStudentsQuery({ classId, status: 'ALL' });
+  const { data: catalog } = useGetConductCatalogQuery();
   const studentNameById = useMemo(() => buildIdNameMap(students, 'fullName'), [students]);
+  const catalogLabelById = useMemo(() => buildIdNameMap(catalog, 'label'), [catalog]);
 
   if (isError) {
     return (
@@ -121,7 +120,11 @@ export function ClassDashboardContent({ classId }) {
                     <td className="py-2 pr-4">{formatDate(log.date)}</td>
                     <td className="py-2 pr-4">{studentNameById.get(String(log.studentId)) ?? '—'}</td>
                     <td className="py-2 pr-4">{formatSignedPoints(log.points)}</td>
-                    <td className="py-2 pr-4">{log.note}</td>
+                    <td className="py-2 pr-4">
+                      {log.catalogItemId
+                        ? catalogLabelById.get(String(log.catalogItemId)) ?? log.note ?? '—'
+                        : log.note}
+                    </td>
                   </tr>
                 ))}
               </tbody>

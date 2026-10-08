@@ -50,8 +50,12 @@ test('submit đủ transferDate + transferReason gọi đúng payload useTransfe
   });
 });
 
-test('transferDate mặc định là hôm nay', () => {
-  const today = new Date().toISOString().slice(0, 10);
+test('transferDate mặc định là hôm nay theo giờ ĐỊA PHƯƠNG (không dùng toISOString() UTC thuần)', () => {
+  // Tính "hôm nay" bằng getFullYear/getMonth/getDate (giờ địa phương) thay vì toISOString() (UTC thuần) —
+  // 2 cách tính lệch nhau 1 ngày vào buổi sáng sớm giờ VN (UTC+7), đúng bug đã phát hiện ở review sub-project 3
+  // (xem todayDateOnly trong lib/utils.js).
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   renderDialog();
 
   expect(screen.getByLabelText('Ngày chuyển đi')).toHaveValue(today);

@@ -136,6 +136,25 @@ test('(c) đổi 1 học sinh đang LATE (từ dữ liệu fetch về) ngược 
   );
 });
 
+test('(d2) giáo viên giữ CẢ HOMEROOM lẫn 1 SUBJECT của CÙNG lớp → bộ chọn "Đang thao tác với vị trí" BẮT BUỘC hiện, không tự ý chọn mặc định rồi giấu đi', () => {
+  getClassDetailMock.mockReturnValue({
+    data: {
+      ...DETAIL,
+      positions: [
+        { id: 'p-hr', type: 'HOMEROOM', subject: undefined, holder: { id: 'teacher-2-vi-tri', fullName: 'Thầy X' } },
+        { id: 'p-toan', type: 'SUBJECT', subject: 'Toán', holder: { id: 'teacher-2-vi-tri', fullName: 'Thầy X' } },
+        { id: 'p-van', type: 'SUBJECT', subject: 'Văn', holder: { id: 'teacher-van', fullName: 'Cô Văn' } },
+      ],
+    },
+    isLoading: false,
+  });
+  getPositionAttendanceMock.mockReturnValue({ data: [] });
+
+  renderPage({ id: 'teacher-2-vi-tri', role: 'TEACHER' });
+
+  expect(screen.getByLabelText('Đang thao tác với vị trí')).toBeInTheDocument();
+});
+
 test('(d) GVBM thuần (myPositions.length === 1, không phải HOMEROOM) → không render bộ chọn "Xem vị trí khác"', () => {
   getPositionAttendanceMock.mockReturnValue({ data: [] });
 
@@ -182,4 +201,60 @@ test('(f) đổi ngày (nút lùi 1 ngày) → gọi lại cả getPositionAtten
 
   expect(getPositionAttendanceMock.mock.calls.at(-1)[0].date).toBe(expectedDateStr);
   expect(getClassAttendanceSummaryMock.mock.calls.at(-1)[0].date).toBe(expectedDateStr);
+});
+
+test('không giữ vị trí nào của lớp này (IDOR, vd gõ nhầm URL) → hiện đúng copy "không có quyền", không hiện bảng rỗng', () => {
+  getStudentsMock.mockReturnValue({
+    data: undefined,
+    isLoading: false,
+    isError: true,
+    error: { status: 403, data: { message: 'Forbidden resource' } },
+  });
+  getPositionAttendanceMock.mockReturnValue({ data: [] });
+
+  renderPage({ id: 'ke-la', role: 'TEACHER' });
+
+  expect(screen.getByText('Bạn không có quyền xem lớp này')).toBeInTheDocument();
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+});
+
+test('(h) GET điểm danh thất bại → hiện lỗi, KHÔNG được coi mọi học sinh là "Có mặt" rồi cho lưu đè', () => {
+  getPositionAttendanceMock.mockReturnValue({
+    data: undefined,
+    isError: true,
+    error: { status: 500, data: { message: 'Không tải được dữ liệu điểm danh' } },
+  });
+
+  renderPage({ id: 'teacher-chu-nhiem', role: 'TEACHER' });
+
+  expect(screen.getByText('Không tải được dữ liệu điểm danh')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Lưu điểm danh' })).not.toBeInTheDocument();
+});
+
+test('(i) lưu điểm danh KHÔNG xoá bản ghi của học sinh đã chuyển lớp (không còn trong roster ACTIVE)', async () => {
+  // s2 có bản ghi LATE nhưng KHÔNG có trong roster (đã chuyển lớp) — PUT thay thế toàn bộ nên nếu không mang
+  // theo bản ghi này, backend sẽ hiểu là "đã xoá ngoại lệ của s2" (deleteMany $nin), mất lịch sử thật.
+  getPositionAttendanceMock.mockReturnValue({
+    data: [{ studentId: 's2-da-chuyen-lop', status: 'LATE' }],
+  });
+
+  renderPage({ id: 'teacher-chu-nhiem', role: 'TEACHER' });
+  await userEvent.click(screen.getByRole('button', { name: 'Lưu điểm danh' }));
+
+  const savedEntries = markAttendanceMock.mock.calls.at(-1)[0].entries;
+  expect(savedEntries).toContainEqual({ studentId: 's2-da-chuyen-lop', status: 'LATE' });
+});
+
+test('(g) ngày mặc định là ngày hôm nay theo giờ ĐỊA PHƯƠNG, không lùi 1 ngày vào buổi sáng sớm (giờ VN UTC+7)', () => {
+  // 2026-10-08T23:30:00Z = 06:30 sáng 2026-10-09 giờ VN — đúng lúc giáo viên điểm danh đầu giờ. Nếu dùng
+  // toISOString().slice(0,10) (UTC thuần) sẽ mặc định nhầm sang "2026-10-08".
+  jest.useFakeTimers().setSystemTime(new Date('2026-10-08T23:30:00.000Z'));
+  getPositionAttendanceMock.mockReturnValue({ data: [] });
+
+  renderPage({ id: 'teacher-chu-nhiem', role: 'TEACHER' });
+
+  expect(getPositionAttendanceMock.mock.calls.at(-1)[0].date).toBe('2026-10-09');
+  expect(getClassAttendanceSummaryMock.mock.calls.at(-1)[0].date).toBe('2026-10-09');
+
+  jest.useRealTimers();
 });

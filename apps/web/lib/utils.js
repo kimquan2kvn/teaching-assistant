@@ -40,6 +40,18 @@ export function getMyPositionsInClass(positions, currentUser) {
   return all.filter((position) => position.holder?.id === currentUser.id);
 }
 
+// Ngày hôm nay theo giờ ĐỊA PHƯƠNG của trình duyệt (yyyy-mm-dd) — KHÔNG dùng new Date().toISOString() (UTC
+// thuần): từ 00:00-07:00 giờ Việt Nam (UTC+7), toISOString() trả về NGÀY HÔM TRƯỚC, đúng lúc giáo viên điểm
+// danh đầu giờ sáng — đã gây bug thật (phát hiện ở review sub-project 3): trang điểm danh mặc định sai ngày,
+// lưu đè/xoá nhầm bản ghi của ngày trước đó.
+export function todayDateOnly() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Hiển thị điểm có dấu: số dương thêm "+" phía trước, số âm giữ nguyên dấu "-" có sẵn, 0 → "0" (không thêm +).
 export function formatSignedPoints(points) {
   if (points > 0) return `+${points}`;

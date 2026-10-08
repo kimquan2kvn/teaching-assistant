@@ -11,7 +11,7 @@ import {
   useMarkAttendanceMutation,
 } from '@/lib/store/attendance-api';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
-import { getMyPositionsInClass, cn } from '@/lib/utils';
+import { getMyPositionsInClass, todayDateOnly, cn } from '@/lib/utils';
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -26,10 +26,6 @@ const STATUS_OPTIONS = [
   { value: 'UNEXCUSED', label: 'Không phép', variant: 'danger' },
 ];
 const STATUS_BY_VALUE = new Map(STATUS_OPTIONS.map((opt) => [opt.value, opt]));
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 // Cộng/trừ ngày trên chuỗi yyyy-mm-dd bằng mốc UTC-midnight thay vì `new Date(dateStr)` + setDate theo giờ
 // địa phương — tránh lệch ngày khi múi giờ trình duyệt âm so với UTC, cùng lý do formatDate() ở utils.js dùng
@@ -50,7 +46,7 @@ export default function DiemDanhPage() {
   const { classId } = useParams();
   const currentUser = useSelector(selectCurrentUser);
 
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(todayDateOnly);
   // '' nghĩa là "chưa tự chọn, dùng mặc định suy ra từ myPositions" — không dùng thẳng defaultWritingPositionId
   // làm initial state vì nó phụ thuộc dữ liệu fetch về sau (classDetail), rỗng lúc mount.
   const [writingPositionId, setWritingPositionId] = useState('');
@@ -95,10 +91,11 @@ export default function DiemDanhPage() {
     error: studentsError,
   } = useGetStudentsQuery({ classId, status: 'ACTIVE' });
   const roster = students ?? [];
-  const { data: attendanceRecords } = useGetPositionAttendanceQuery(
-    { positionId: activePositionId, date },
-    { skip: !activePositionId },
-  );
+  const {
+    data: attendanceRecords,
+    isError: attendanceIsError,
+    error: attendanceError,
+  } = useGetPositionAttendanceQuery({ positionId: activePositionId, date }, { skip: !activePositionId });
   // LUÔN tính theo HOMEROOM bất kể đang xem/ghi vị trí nào (AttendanceService.getClassSummary) — đây là thống
   // kê "chính thức" của lớp, không phải thống kê của vị trí đang thao tác.
   const { data: summary } = useGetClassAttendanceSummaryQuery({ classId, date });
@@ -146,9 +143,17 @@ export default function DiemDanhPage() {
   // fetch (chưa hề bị sửa tay) nhưng vẫn phải có mặt trong entries khi lưu.
   async function handleSave() {
     setError(null);
-    const entries = roster
+    const rosterEntries = roster
       .map((student) => ({ studentId: student._id, status: statusOf(student._id) }))
       .filter((entry) => entry.status !== 'PRESENT');
+    // Roster chỉ gồm học sinh ACTIVE — học sinh đã chuyển lớp vẫn có thể có bản ghi ngoại lệ của ngày này
+    // (vd LATE trước khi chuyển đi). PUT là "thay thế toàn bộ" nên nếu không mang theo, backend sẽ hiểu là
+    // "xoá ngoại lệ của học sinh đó" và xoá mất lịch sử thật (CLAUDE.md: "giữ lịch sử" khi học sinh chuyển đi).
+    const rosterIds = new Set(roster.map((student) => String(student._id)));
+    const carriedOverEntries = (attendanceRecords ?? [])
+      .filter((record) => !rosterIds.has(String(record.studentId)))
+      .map((record) => ({ studentId: String(record.studentId), status: record.status }));
+    const entries = [...rosterEntries, ...carriedOverEntries];
     try {
       await markAttendance({ positionId: effectiveWritingPositionId, classId, date, entries }).unwrap();
     } catch (err) {
@@ -227,6 +232,12 @@ export default function DiemDanhPage() {
 
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
 
+      {attendanceIsError && (
+        <p className="mt-4 text-sm text-danger">
+          {attendanceError?.data?.message ?? 'Không tải được dữ liệu điểm danh'}
+        </p>
+      )}
+
       {studentsLoading ? (
         <p className="mt-4 text-sm text-fg-muted">Đang tải...</p>
       ) : (
@@ -277,7 +288,7 @@ export default function DiemDanhPage() {
         </div>
       )}
 
-      {!isReadOnlyView && (
+      {!isReadOnlyView && !attendanceIsError && (
         <div className="mt-4">
           <Button type="button" onClick={handleSave} disabled={isSaving}>
             Lưu điểm danh

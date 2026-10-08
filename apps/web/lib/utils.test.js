@@ -1,4 +1,4 @@
-import { buildIdNameMap, getMyPositionsInClass, formatSignedPoints } from './utils';
+import { buildIdNameMap, getMyPositionsInClass, formatSignedPoints, todayDateOnly } from './utils';
 
 describe('buildIdNameMap', () => {
   test('mảng rỗng → Map rỗng, không throw', () => {
@@ -58,6 +58,19 @@ describe('getMyPositionsInClass', () => {
   test('không có currentUser → trả mảng rỗng, không throw', () => {
     const result = getMyPositionsInClass(positions, null);
     expect(result).toEqual([]);
+  });
+});
+
+describe('todayDateOnly', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('trả đúng ngày theo giờ ĐỊA PHƯƠNG, không lùi 1 ngày vào buổi sáng sớm (giờ VN UTC+7, lúc điểm danh)', () => {
+    // 2026-10-08T23:30:00Z = 06:30 sáng 2026-10-09 giờ VN (UTC+7) — nếu dùng toISOString().slice(0,10) (UTC
+    // thuần) sẽ trả nhầm "2026-10-08", đúng lúc giáo viên đang điểm danh đầu giờ sáng.
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-08T23:30:00.000Z'));
+    expect(todayDateOnly()).toBe('2026-10-09');
   });
 });
 

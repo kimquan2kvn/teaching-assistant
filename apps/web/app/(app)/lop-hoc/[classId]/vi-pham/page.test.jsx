@@ -96,6 +96,30 @@ test('ghép đúng tên danh mục khi có catalogItemId, hiện note khi là "K
   expect(table.getByText('Giúp đỡ bạn học')).toBeInTheDocument();
 });
 
+test('danh mục đã bị ADMIN ẩn (không còn trong GET /conduct-catalog) → hiện note thay vì trống, không mất thông tin', () => {
+  // catalogItemId 'ci-hidden' không nằm trong CATALOG (giống hệt việc ADMIN ẩn mục này — list() chỉ trả
+  // isActive:true) — nếu log đó có note, phải hiện note thay vì '—' để không mất hẳn lý do.
+  getClassConductLogsMock.mockReturnValue({
+    data: [
+      {
+        _id: 'cl-hidden',
+        studentId: 's1',
+        catalogItemId: 'ci-hidden',
+        points: -5,
+        note: 'Nói chuyện riêng trong giờ',
+        date: '2026-10-01T00:00:00.000Z',
+      },
+    ],
+    isLoading: false,
+    isError: false,
+  });
+
+  renderPage();
+
+  const table = within(screen.getByRole('table'));
+  expect(table.getByText('Nói chuyện riêng trong giờ')).toBeInTheDocument();
+});
+
 test('hiện điểm có dấu đúng Badge success/danger theo dấu điểm', () => {
   renderPage();
 

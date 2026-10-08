@@ -81,7 +81,9 @@ export default function ViPhamPage() {
                   <td className="py-2 pr-4">{formatDate(log.date)}</td>
                   <td className="py-2 pr-4">{studentMap.get(String(log.studentId)) ?? '—'}</td>
                   <td className="py-2 pr-4">
-                    {log.catalogItemId ? catalogMap.get(String(log.catalogItemId)) ?? '—' : log.note}
+                    {log.catalogItemId
+                      ? catalogMap.get(String(log.catalogItemId)) ?? log.note ?? '—'
+                      : log.note}
                   </td>
                   <td className="py-2 pr-4">
                     <Badge variant={log.points > 0 ? 'success' : 'danger'}>

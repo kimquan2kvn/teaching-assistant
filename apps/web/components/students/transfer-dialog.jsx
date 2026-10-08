@@ -7,15 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayDateOnly } from '@/lib/utils';
 
 // Props: open (bool), onOpenChange(bool) — điều khiển ẩn/hiện từ component cha (vd roster page);
 // classId/studentId — tham số bắt buộc cho mutation; studentName — chỉ để hiển thị trong tiêu đề.
 export function TransferDialog({ open, onOpenChange, classId, studentId, studentName }) {
-  const [transferDate, setTransferDate] = useState(todayIso);
+  const [transferDate, setTransferDate] = useState(todayDateOnly);
   const [transferReason, setTransferReason] = useState('');
   const [error, setError] = useState(null);
   const [transferStudent, { isLoading }] = useTransferStudentMutation();
