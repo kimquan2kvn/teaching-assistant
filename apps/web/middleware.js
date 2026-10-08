@@ -1,0 +1,14 @@
+import { NextResponse } from 'next/server';
+
+const PUBLIC_PATHS = ['/dang-nhap', '/dang-ky'];
+
+export function middleware(request) {
+  const hasSession = request.cookies.has('refresh_token');
+  const isPublicPath = PUBLIC_PATHS.includes(request.nextUrl.pathname);
+  if (!hasSession && !isPublicPath) {
+    return NextResponse.redirect(new URL('/dang-nhap', request.url));
+  }
+  return NextResponse.next();
+}
+
+export const config = { matcher: ['/((?!_next|favicon.ico).*)'] };
