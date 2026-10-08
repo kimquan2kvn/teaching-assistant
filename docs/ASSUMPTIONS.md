@@ -14,4 +14,7 @@ Giả định về **nghiệp vụ** (business rules) sẽ được hỏi lại 
 - **MongoDB**: image `mongo` bản mới nhất dòng 7.x, 1 node cấu hình `--replSet rs0`, có service `mongo-init` chạy `rs.initiate()` một lần khi container Mongo sẵn sàng.
 - **Schema Mongoose phase 0**: chỉ tạo các collection nền tảng mà Phase 1 cần ngay: `User, SchoolYear, Semester, Class, Position, Student`. Các collection khác trong mô hình dữ liệu gợi ý (Holiday, TimetableSlot, PpctItem, LessonLog, AttendanceRecord, ConductCatalog, ConductLog, Homework, HomeworkSubmission, Punishment, GradeColumn, GradeValue, SeatingChart, ParentNotice, Plan, Subscription, PaymentOrder, AuditLog) sẽ được thêm ở đúng phase triển khai nghiệp vụ tương ứng, tránh thiết kế thừa trước khi cần.
 - **PWA**: không làm ở Phase 0 (thuộc Phase 7), `apps/web` là Next.js thường, chưa có manifest/service worker.
+  Xác nhận với người dùng: "PWA" chỉ là lớp cài đặt (manifest + service worker) phủ lên **một** bản web responsive
+  duy nhất (Phase 0 đã làm responsive ngay từ đầu — sidebar → drawer trên mobile) — không phải giao diện/codebase
+  riêng cho mobile. Phase 7 không được tạo thêm luồng UI khác ngoài thêm khả năng cài đặt + offline cơ bản.
 - **Auth thật**: chưa làm ở Phase 0 (thuộc Phase 1). `apps/api` Phase 0 chỉ có module gốc + 1 endpoint health check.
