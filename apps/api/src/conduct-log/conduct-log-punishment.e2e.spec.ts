@@ -27,6 +27,7 @@ import { StudentsController } from '../students/students.controller';
 import { StudentsService } from '../students/students.service';
 import { ConductCatalogController } from '../conduct-catalog/conduct-catalog.controller';
 import { ConductCatalogService } from '../conduct-catalog/conduct-catalog.service';
+import { SchoolConfigController } from '../school-config/school-config.controller';
 import { SchoolConfigService } from '../school-config/school-config.service';
 import { PositionGuard } from '../common/guards/position.guard';
 import { PositionOwnerGuard } from '../common/guards/position-owner.guard';
@@ -38,6 +39,8 @@ import { buildTestMongoUri } from '../../test/build-test-mongo-uri';
 describe('ConductLog punishment automation (e2e)', () => {
   let app: INestApplication;
   let positionModel: Model<Position>;
+  let conductLogModel: Model<ConductLog>;
+  let schoolConfigModel: Model<SchoolConfig>;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -65,6 +68,7 @@ describe('ConductLog punishment automation (e2e)', () => {
         ConductCatalogController,
         ConductLogController,
         ClassConductController,
+        SchoolConfigController,
       ],
       providers: [
         AuthService,
@@ -84,6 +88,8 @@ describe('ConductLog punishment automation (e2e)', () => {
     app = moduleRef.createNestApplication();
     await app.init();
     positionModel = moduleRef.get(getModelToken(Position.name));
+    conductLogModel = moduleRef.get(getModelToken(ConductLog.name));
+    schoolConfigModel = moduleRef.get(getModelToken(SchoolConfig.name));
 
     const schoolYearModel = moduleRef.get(getModelToken(SchoolYear.name));
     await schoolYearModel.create({
@@ -92,7 +98,6 @@ describe('ConductLog punishment automation (e2e)', () => {
       startDate: new Date('2025-09-05'),
       endDate: new Date('2026-05-31'),
     });
-    const schoolConfigModel = moduleRef.get(getModelToken(SchoolConfig.name));
     await schoolConfigModel.create({});
   });
 
@@ -170,7 +175,7 @@ describe('ConductLog punishment automation (e2e)', () => {
     expect(third.body.punishments).toHaveLength(0);
   });
 
-  it("rule 'Không làm BTVN' leo thang đúng 20/30/40/50 + cờ notifyParent từ lần 4", async () => {
+  it("rule 'Không làm BTVN' leo thang đúng 20/30/40/50 + cờ notifyParent từ lần 4, tính theo TOÀN lịch sử đúng catalogItemId (không lẫn vi phạm khác, không reset theo tuần)", async () => {
     const { token, classId } = await createClassAsHomeroom('gvcn.pun-b', '10P2');
     const homeroomId = await getHomeroomPositionId(classId);
     const studentId = await createStudent(classId, token, 'Học sinh B');
@@ -181,6 +186,20 @@ describe('ConductLog punishment automation (e2e)', () => {
       .send({ label: 'Không làm BTVN', kind: 'VIOLATION', points: 1, specialRule: 'HOMEWORK_NOT_DONE' })
       .expect(201);
     const catalogItemId = catalogRes.body._id as string;
+    const decoyCatalogRes = await request(app.getHttpServer())
+      .post('/conduct-catalog')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ label: 'Lỗi khác (không phải BTVN)', kind: 'VIOLATION', points: 1 })
+      .expect(201);
+    const decoyCatalogItemId = decoyCatalogRes.body._id as string;
+
+    // Ghi 1 vi phạm KHÁC trước — không được tính vào occurrence của rule BTVN (chứng minh đếm đúng theo
+    // catalogItemId, không phải theo "bất kỳ vi phạm nào").
+    await request(app.getHttpServer())
+      .post(`/positions/${homeroomId}/conduct-logs`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ studentId, catalogItemId: decoyCatalogItemId })
+      .expect(201);
 
     const expectedLines = [20, 30, 40, 50];
     for (let i = 0; i < 4; i++) {
@@ -192,10 +211,18 @@ describe('ConductLog punishment automation (e2e)', () => {
       const homeworkPunishment = res.body.punishments.find((p: { kind: string }) => p.kind === 'HOMEWORK_REPEAT');
       expect(homeworkPunishment.lines).toBe(expectedLines[i]);
       expect(homeworkPunishment.notifyParent).toBe(i === 3);
+
+      // Sau lần 1 và 2, "lùi" weekStart của 2 bản ghi BTVN vừa tạo về tuần trước — nếu sau này ai đó vô tình
+      // thêm điều kiện lọc theo weekStart vào query đếm occurrence (reset theo tuần), lần 3/4 sẽ sai thành
+      // 1/2 thay vì 3/4, test này sẽ bắt được ngay.
+      if (i === 1) {
+        const lastWeek = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+        await conductLogModel.updateMany({ studentId, catalogItemId }, { weekStart: lastWeek });
+      }
     }
   });
 
-  it('2 request ghi vi phạm gần như đồng thời cho cùng học sinh/tuần chỉ tạo đúng 1 Punishment WEEKLY_THRESHOLD', async () => {
+  it('2 request ghi vi phạm gần như đồng thời cho cùng học sinh/tuần chỉ tạo đúng 1 Punishment WEEKLY_THRESHOLD (xác nhận ở DB, không chỉ ở response)', async () => {
     const { token, classId } = await createClassAsHomeroom('gvcn.pun-c', '10P3');
     const homeroomId = await getHomeroomPositionId(classId);
     const studentId = await createStudent(classId, token, 'Học sinh C');
@@ -216,5 +243,70 @@ describe('ConductLog punishment automation (e2e)', () => {
     ]);
     const totalCreated = resA.body.punishments.length + resB.body.punishments.length;
     expect(totalCreated).toBe(1);
+
+    const punishmentModel = app.get(getModelToken(Punishment.name)) as Model<Punishment>;
+    const countInDb = await punishmentModel.countDocuments({ studentId, kind: 'WEEKLY_THRESHOLD' });
+    expect(countInDb).toBe(1);
+  });
+
+  it('thiếu SchoolConfig (vd quên chạy seed) → 404 rõ ràng, KHÔNG lưu ConductLog (tránh log mồ côi + client retry tạo trùng)', async () => {
+    const { token, classId } = await createClassAsHomeroom('gvcn.pun-g', '10P8');
+    const homeroomId = await getHomeroomPositionId(classId);
+    const studentId = await createStudent(classId, token, 'Học sinh G');
+
+    await schoolConfigModel.deleteMany({});
+    try {
+      await request(app.getHttpServer())
+        .post(`/positions/${homeroomId}/conduct-logs`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ studentId, kind: 'VIOLATION', points: 5, note: 'x' })
+        .expect(404);
+
+      const count = await conductLogModel.countDocuments({ studentId });
+      expect(count).toBe(0);
+    } finally {
+      await schoolConfigModel.create({});
+    }
+  });
+
+  it('ADMIN đổi weeklyViolationThreshold áp dụng ngay cho lần ghi ConductLog tiếp theo (không cache)', async () => {
+    const { token, classId } = await createClassAsHomeroom('gvcn.pun-h', '10P9');
+    const homeroomId = await getHomeroomPositionId(classId);
+    const studentId = await createStudent(classId, token, 'Học sinh H');
+    const { token: adminToken } = await registerAndPromote('admin.pun-h', 'ADMIN');
+
+    await request(app.getHttpServer())
+      .patch('/school-config')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ weeklyViolationThreshold: 3 })
+      .expect(200);
+
+    try {
+      const first = await request(app.getHttpServer())
+        .post(`/positions/${homeroomId}/conduct-logs`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ studentId, kind: 'VIOLATION', points: 5, note: 'Lỗi 1' })
+        .expect(201);
+      expect(first.body.punishments).toHaveLength(0);
+
+      const second = await request(app.getHttpServer())
+        .post(`/positions/${homeroomId}/conduct-logs`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ studentId, kind: 'VIOLATION', points: 5, note: 'Lỗi 2' })
+        .expect(201);
+      expect(second.body.punishments).toHaveLength(0);
+
+      const third = await request(app.getHttpServer())
+        .post(`/positions/${homeroomId}/conduct-logs`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ studentId, kind: 'VIOLATION', points: 5, note: 'Lỗi 3' })
+        .expect(201);
+      expect(third.body.punishments).toHaveLength(1);
+    } finally {
+      await request(app.getHttpServer())
+        .patch('/school-config')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ weeklyViolationThreshold: 2 });
+    }
   });
 });

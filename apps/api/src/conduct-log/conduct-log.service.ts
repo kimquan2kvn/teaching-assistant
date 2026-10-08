@@ -35,6 +35,11 @@ export class ConductLogService {
     recordedBy: string,
   ): Promise<{ conductLog: ConductLog; punishments: Punishment[] }> {
     await this.studentsService.verifyAllInClass(String(position.classId), [input.studentId]);
+    // Đọc config TRƯỚC khi ghi ConductLog — nếu SchoolConfig chưa tồn tại (vd quên chạy seed), request phải
+    // thất bại ở đây, KHÔNG được lưu ConductLog rồi mới phát hiện thiếu config, vì lúc đó vi phạm đã bị lưu
+    // (log "mồ côi", không có punishment đi kèm) và client gặp lỗi tưởng là "không lưu được gì" nên có thể bấm
+    // gửi lại, tạo thêm 1 ConductLog trùng cho cùng 1 vi phạm.
+    const config = await this.schoolConfigService.getConfig();
 
     const date = new Date();
     const weekStart = getIsoWeekStartVN(date);
@@ -58,8 +63,6 @@ export class ConductLogService {
       doc.points = input.kind === 'VIOLATION' ? -input.points : input.points;
     }
     const conductLog = await this.conductLogModel.create(doc);
-
-    const config = await this.schoolConfigService.getConfig();
     const punishments: Punishment[] = [];
 
     if (conductLog.points < 0) {
