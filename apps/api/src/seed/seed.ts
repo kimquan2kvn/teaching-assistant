@@ -1,8 +1,8 @@
 /**
- * Script seed cho môi trường dev: xoá sạch dữ liệu User/SchoolYear/Class/Position hiện có rồi tạo
- * lại 1 admin, 3 giáo viên mẫu, 1 năm học hiện hành, và 1 lớp "11A4" (gv1 làm GVCN).
+ * Script seed cho môi trường dev: xoá sạch dữ liệu User/SchoolYear/Class/Position/Student hiện có rồi
+ * tạo lại 1 admin, 3 giáo viên mẫu, 1 năm học hiện hành, 1 lớp "11A4" (gv1 làm GVCN) và 12 học sinh mẫu.
  *
- * KHÔNG chạy script này trên môi trường có dữ liệu thật — mọi thứ trong 4 collection trên sẽ bị xoá.
+ * KHÔNG chạy script này trên môi trường có dữ liệu thật — mọi thứ trong 5 collection trên sẽ bị xoá.
  *
  * Chạy: pnpm --filter api run seed
  */
@@ -15,9 +15,11 @@ import { User } from '../database/schemas/user.schema';
 import { SchoolYear } from '../database/schemas/school-year.schema';
 import { Class } from '../database/schemas/class.schema';
 import { Position } from '../database/schemas/position.schema';
+import { Student } from '../database/schemas/student.schema';
 import { AuthService } from '../auth/auth.service';
 import { SchoolYearsService } from '../school-years/school-years.service';
 import { ClassesService } from '../classes/classes.service';
+import { StudentsService } from '../students/students.service';
 
 const SEED_PASSWORD = 'Seed@123456';
 
@@ -38,12 +40,14 @@ async function run() {
     const schoolYearModel = app.get<Model<SchoolYear>>(getModelToken(SchoolYear.name));
     const classModel = app.get<Model<Class>>(getModelToken(Class.name));
     const positionModel = app.get<Model<Position>>(getModelToken(Position.name));
+    const studentModel = app.get<Model<Student>>(getModelToken(Student.name));
 
     await Promise.all([
       userModel.deleteMany({}),
       schoolYearModel.deleteMany({}),
       classModel.deleteMany({}),
       positionModel.deleteMany({}),
+      studentModel.deleteMany({}),
     ]);
 
     const schoolYearsService = app.get(SchoolYearsService);
@@ -80,11 +84,17 @@ async function run() {
       claimHomeroom: true,
     });
 
+    const studentsService = app.get(StudentsService);
+    for (let i = 1; i <= 12; i++) {
+      const stt = String(i).padStart(2, '0');
+      await studentsService.create(String(createdClass._id), { fullName: `Học sinh mẫu ${stt}` });
+    }
+
     console.log('--- Seed hoàn tất ---');
     console.log(`Mật khẩu dùng chung cho mọi tài khoản seed: ${SEED_PASSWORD}`);
     console.log('Admin: username=admin');
     teacherUsernames.forEach((u) => console.log(`Giáo viên: username=${u}`));
-    console.log(`Lớp 11A4 — mã lớp: ${createdClass.code} (gv1 là GVCN)`);
+    console.log(`Lớp 11A4 — mã lớp: ${createdClass.code} (gv1 là GVCN), 12 học sinh mẫu`);
   } finally {
     await app.close();
   }
