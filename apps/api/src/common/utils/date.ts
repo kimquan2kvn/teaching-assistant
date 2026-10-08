@@ -36,3 +36,9 @@ export function getIsoWeekStartVN(date: Date): Date {
   const weekStartShifted = getIsoWeekStart(shifted);
   return new Date(weekStartShifted.getTime() - VIETNAM_UTC_OFFSET_MS);
 }
+
+export function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result;
+}

@@ -14,6 +14,8 @@ import { Student, StudentSchema } from '../database/schemas/student.schema';
 import { AttendanceRecord, AttendanceRecordSchema } from '../database/schemas/attendance-record.schema';
 import { ConductCatalogItem, ConductCatalogItemSchema } from '../database/schemas/conduct-catalog-item.schema';
 import { ConductLog, ConductLogSchema } from '../database/schemas/conduct-log.schema';
+import { Punishment, PunishmentSchema } from '../database/schemas/punishment.schema';
+import { SchoolConfig, SchoolConfigSchema } from '../database/schemas/school-config.schema';
 import { AuthController } from '../auth/auth.controller';
 import { AuthService } from '../auth/auth.service';
 import { JwtStrategy } from '../auth/jwt.strategy';
@@ -29,6 +31,7 @@ import { ConductCatalogService } from '../conduct-catalog/conduct-catalog.servic
 import { ConductLogController } from '../conduct-log/conduct-log.controller';
 import { ClassConductController } from '../conduct-log/class-conduct.controller';
 import { ConductLogService } from '../conduct-log/conduct-log.service';
+import { SchoolConfigService } from '../school-config/school-config.service';
 import { PositionGuard } from '../common/guards/position.guard';
 import { PositionOwnerGuard } from '../common/guards/position-owner.guard';
 import { AttendanceController } from './attendance.controller';
@@ -54,6 +57,8 @@ describe('Permission matrix — attendance & conduct (e2e)', () => {
           { name: AttendanceRecord.name, schema: AttendanceRecordSchema },
           { name: ConductCatalogItem.name, schema: ConductCatalogItemSchema },
           { name: ConductLog.name, schema: ConductLogSchema },
+          { name: Punishment.name, schema: PunishmentSchema },
+          { name: SchoolConfig.name, schema: SchoolConfigSchema },
         ]),
         JwtModule.register({}),
         PassportModule,
@@ -78,6 +83,7 @@ describe('Permission matrix — attendance & conduct (e2e)', () => {
         StudentsService,
         ConductCatalogService,
         ConductLogService,
+        SchoolConfigService,
         AttendanceService,
         PositionGuard,
         PositionOwnerGuard,
@@ -96,6 +102,8 @@ describe('Permission matrix — attendance & conduct (e2e)', () => {
       startDate: new Date('2025-09-05'),
       endDate: new Date('2026-05-31'),
     });
+    const schoolConfigModel = moduleRef.get(getModelToken(SchoolConfig.name));
+    await schoolConfigModel.create({});
   });
 
   afterAll(async () => {

@@ -13,6 +13,8 @@ import { Position, PositionSchema } from '../database/schemas/position.schema';
 import { Student, StudentSchema } from '../database/schemas/student.schema';
 import { ConductCatalogItem, ConductCatalogItemSchema } from '../database/schemas/conduct-catalog-item.schema';
 import { ConductLog, ConductLogSchema } from '../database/schemas/conduct-log.schema';
+import { Punishment, PunishmentSchema } from '../database/schemas/punishment.schema';
+import { SchoolConfig, SchoolConfigSchema } from '../database/schemas/school-config.schema';
 import { AuthController } from '../auth/auth.controller';
 import { AuthService } from '../auth/auth.service';
 import { JwtStrategy } from '../auth/jwt.strategy';
@@ -25,6 +27,7 @@ import { StudentsController } from '../students/students.controller';
 import { StudentsService } from '../students/students.service';
 import { ConductCatalogController } from '../conduct-catalog/conduct-catalog.controller';
 import { ConductCatalogService } from '../conduct-catalog/conduct-catalog.service';
+import { SchoolConfigService } from '../school-config/school-config.service';
 import { PositionGuard } from '../common/guards/position.guard';
 import { PositionOwnerGuard } from '../common/guards/position-owner.guard';
 import { ConductLogController } from './conduct-log.controller';
@@ -49,6 +52,8 @@ describe('ConductLog (e2e)', () => {
           { name: Student.name, schema: StudentSchema },
           { name: ConductCatalogItem.name, schema: ConductCatalogItemSchema },
           { name: ConductLog.name, schema: ConductLogSchema },
+          { name: Punishment.name, schema: PunishmentSchema },
+          { name: SchoolConfig.name, schema: SchoolConfigSchema },
         ]),
         JwtModule.register({}),
         PassportModule,
@@ -71,6 +76,7 @@ describe('ConductLog (e2e)', () => {
         StudentsService,
         ConductCatalogService,
         ConductLogService,
+        SchoolConfigService,
         PositionGuard,
         PositionOwnerGuard,
         Reflector,
@@ -88,6 +94,8 @@ describe('ConductLog (e2e)', () => {
       startDate: new Date('2025-09-05'),
       endDate: new Date('2026-05-31'),
     });
+    const schoolConfigModel = moduleRef.get(getModelToken(SchoolConfig.name));
+    await schoolConfigModel.create({});
   });
 
   afterAll(async () => {

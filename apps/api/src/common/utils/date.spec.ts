@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { parseDateOnly, getIsoWeekStart, getIsoWeekStartVN } from './date';
+import { parseDateOnly, getIsoWeekStart, getIsoWeekStartVN, addDays } from './date';
 
 describe('parseDateOnly', () => {
   it('parse đúng yyyy-mm-dd thành 00:00 UTC', () => {
@@ -43,5 +43,11 @@ describe('getIsoWeekStartVN', () => {
   it('giữa tuần vẫn tính đúng weekStart (quy đổi sang mốc 17:00 UTC Chủ Nhật trước đó)', () => {
     const wednesdayNoonVN = new Date('2026-01-21T05:00:00.000Z'); // 12:00 giờ VN Thứ Tư
     expect(getIsoWeekStartVN(wednesdayNoonVN).toISOString()).toBe('2026-01-18T17:00:00.000Z');
+  });
+});
+
+describe('addDays', () => {
+  it('cộng đúng số ngày kể cả qua ranh giới tháng', () => {
+    expect(addDays(new Date('2026-01-30T00:00:00.000Z'), 2).toISOString()).toBe('2026-02-01T00:00:00.000Z');
   });
 });
