@@ -15,7 +15,8 @@ let refreshPromise = null;
 
 async function baseQueryWithReauth(args, api, extraOptions) {
   let result = await rawBaseQuery(args, api, extraOptions);
-  if (result.error?.status === 401) {
+  const requestUrl = typeof args === 'string' ? args : args.url;
+  if (result.error?.status === 401 && requestUrl !== '/auth/refresh') {
     if (!refreshPromise) {
       refreshPromise = rawBaseQuery({ url: '/auth/refresh', method: 'POST' }, api, extraOptions).finally(() => {
         refreshPromise = null;

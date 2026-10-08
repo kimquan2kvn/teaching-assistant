@@ -61,3 +61,10 @@ test('refresh thất bại → xoá Redux state (auth về null)', async () => {
   await store.dispatch(apiSlice.endpoints.me.initiate());
   expect(store.getState().auth).toEqual({ user: null, accessToken: null });
 });
+
+test('gọi thẳng /auth/refresh và chính nó trả 401 thì không tự gọi lại refresh thêm lần nữa', async () => {
+  global.fetch.mockReturnValueOnce(jsonResponse(401, { message: 'Refresh token không hợp lệ' }));
+  const store = makeStore();
+  await store.dispatch(apiSlice.endpoints.refresh.initiate());
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
