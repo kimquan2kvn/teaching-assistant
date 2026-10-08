@@ -10,6 +10,7 @@ import { AttendanceRecord, AttendanceRecordSchema } from './schemas/attendance-r
 import { ConductCatalogItem, ConductCatalogItemSchema } from './schemas/conduct-catalog-item.schema';
 import { ConductLog, ConductLogSchema } from './schemas/conduct-log.schema';
 import { SchoolConfig, SchoolConfigSchema } from './schemas/school-config.schema';
+import { Punishment, PunishmentSchema } from './schemas/punishment.schema';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SchoolConfig, SchoolConfigSchema } from './schemas/school-config.schema
       { name: ConductCatalogItem.name, schema: ConductCatalogItemSchema },
       { name: ConductLog.name, schema: ConductLogSchema },
       { name: SchoolConfig.name, schema: SchoolConfigSchema },
+      { name: Punishment.name, schema: PunishmentSchema },
     ]),
   ],
   exports: [MongooseModule],
