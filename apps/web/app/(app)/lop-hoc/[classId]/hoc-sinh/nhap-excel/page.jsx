@@ -87,7 +87,7 @@ export default function NhapExcelPage({ params }) {
       {previewError && <p className="mt-2 text-sm text-danger">{previewError}</p>}
 
       {rows && (
-        <div className="mt-6">
+        <div className="mt-6 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-fg-muted">

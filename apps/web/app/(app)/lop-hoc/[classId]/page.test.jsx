@@ -110,6 +110,31 @@ test('bấm "Ngừng phụ trách" mở dialog xác nhận, bấm Xác nhận g�
   expect(releasePositionMock).toHaveBeenCalledWith('pos-2');
 });
 
+test('ngừng phụ trách thất bại hiện đúng error.data.message, KHÔNG đóng dialog', async () => {
+  getClassDetailQueryMock.mockReturnValue({
+    data: {
+      class: { id: 'class-1', code: 'ABC123', name: 'Lớp 10A1' },
+      positions: [
+        { id: 'pos-1', type: 'HOMEROOM', subject: null, holder: { id: 'teacher-1', fullName: 'Nguyễn Văn A' } },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+    error: undefined,
+  });
+  releasePositionMock.mockReturnValue({
+    unwrap: () => Promise.reject({ status: 403, data: { message: 'Bạn không giữ vị trí này' } }),
+  });
+
+  renderPage({ userId: 'teacher-1' });
+
+  await userEvent.click(screen.getByRole('button', { name: 'Ngừng phụ trách' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Xác nhận' }));
+
+  expect(await screen.findByText('Bạn không giữ vị trí này')).toBeInTheDocument();
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+});
+
 test('query trả lỗi 403 hiện đúng copy "không có quyền", không hiện bảng vị trí rỗng', () => {
   getClassDetailQueryMock.mockReturnValue({
     data: undefined,

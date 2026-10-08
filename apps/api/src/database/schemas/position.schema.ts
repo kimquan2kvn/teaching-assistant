@@ -28,3 +28,6 @@ PositionSchema.index(
   { classId: 1, type: 1 },
   { unique: true, partialFilterExpression: { type: 'HOMEROOM' } },
 );
+// GET /positions/mine và GET /admin/teachers/:id/positions đều query theo holderId mà không kèm classId —
+// 2 index unique ở trên đều có classId làm prefix nên không áp dụng được cho truy vấn này.
+PositionSchema.index({ holderId: 1 });

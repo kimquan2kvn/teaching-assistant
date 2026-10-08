@@ -121,3 +121,23 @@ test('toggle "Đã chuyển đi" gọi lại useGetStudentsQuery với status=AL
   expect(screen.queryByText('Nguyễn Văn A')).not.toBeInTheDocument();
   expect(screen.queryByText('Trần Thị B')).not.toBeInTheDocument();
 });
+
+test('bảng học sinh cuộn ngang được trên màn hình hẹp (mobile), không làm tràn cả trang', () => {
+  renderPage({ id: 'teacher-chu-nhiem', role: 'TEACHER' });
+  const table = screen.getByRole('table');
+  expect(table.closest('[class*="overflow-x-auto"]')).not.toBeNull();
+});
+
+test('không giữ vị trí nào của lớp này (IDOR, vd gõ nhầm URL) → hiện đúng copy "không có quyền", không hiện bảng rỗng', () => {
+  getStudentsMock.mockReturnValue({
+    data: undefined,
+    isLoading: false,
+    isError: true,
+    error: { status: 403, data: { message: 'Forbidden resource' } },
+  });
+
+  renderPage({ id: 'ke-la', role: 'TEACHER' });
+
+  expect(screen.getByText('Bạn không có quyền xem lớp này')).toBeInTheDocument();
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+});

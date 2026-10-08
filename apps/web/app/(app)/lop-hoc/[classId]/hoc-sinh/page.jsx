@@ -21,7 +21,12 @@ export default function HocSinhPage() {
   const [transferTarget, setTransferTarget] = useState(null);
 
   const { data: detail } = useGetClassDetailQuery(classId);
-  const { data: students, isLoading: studentsLoading } = useGetStudentsQuery({
+  const {
+    data: students,
+    isLoading: studentsLoading,
+    isError: studentsIsError,
+    error: studentsError,
+  } = useGetStudentsQuery({
     classId,
     status: showTransferred ? 'ALL' : 'ACTIVE',
   });
@@ -40,6 +45,19 @@ export default function HocSinhPage() {
     if (!students) return [];
     return showTransferred ? students.filter((s) => s.status === 'TRANSFERRED') : students;
   }, [students, showTransferred]);
+
+  // GET .../students cũng có PositionGuard (như classDetail) — không giữ vị trí nào của lớp này (vd gõ nhầm
+  // URL sang lớp khác) phải hiện đúng "không có quyền", KHÔNG ĐƯỢC render khung trang + bảng rỗng, vì bảng rỗng
+  // trông giống hệt "lớp này chưa có học sinh" và không cho biết thực ra mình không có quyền xem.
+  if (studentsIsError) {
+    return (
+      <div className="p-6">
+        <h1 className="font-heading text-xl font-semibold">
+          {studentsError?.status === 403 ? 'Bạn không có quyền xem lớp này' : 'Không tìm thấy lớp'}
+        </h1>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -74,40 +92,47 @@ export default function HocSinhPage() {
       {studentsLoading ? (
         <p className="mt-4 text-sm text-fg-muted">Đang tải...</p>
       ) : (
-        <table className="mt-4 w-full text-sm">
-          <thead>
-            <tr className="text-left text-fg-muted">
-              <th className="py-2 pr-4">STT</th>
-              <th className="py-2 pr-4">Họ tên</th>
-              <th className="py-2 pr-4">Ngày sinh</th>
-              {canManage && <th className="py-2 pr-4">Hành động</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {visibleStudents.map((student, index) => (
-              <tr key={student._id} className="border-t border-border">
-                <td className="py-2 pr-4">{index + 1}</td>
-                <td className="py-2 pr-4">{student.fullName}</td>
-                <td className="py-2 pr-4">{formatDate(student.dob)}</td>
-                {canManage && (
-                  <td className="flex gap-2 py-2 pr-4">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setFormDialogState({ mode: 'edit', student })}
-                    >
-                      Sửa
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => setTransferTarget(student)}>
-                      Đánh dấu chuyển đi
-                    </Button>
-                  </td>
-                )}
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-fg-muted">
+                <th className="py-2 pr-4">STT</th>
+                <th className="py-2 pr-4">Họ tên</th>
+                <th className="py-2 pr-4">Ngày sinh</th>
+                {canManage && <th className="py-2 pr-4">Hành động</th>}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {visibleStudents.map((student, index) => (
+                <tr key={student._id} className="border-t border-border">
+                  <td className="py-2 pr-4">{index + 1}</td>
+                  <td className="py-2 pr-4">{student.fullName}</td>
+                  <td className="py-2 pr-4">{formatDate(student.dob)}</td>
+                  {canManage && (
+                    <td className="flex gap-2 py-2 pr-4">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setFormDialogState({ mode: 'edit', student })}
+                      >
+                        Sửa
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setTransferTarget(student)}
+                      >
+                        Đánh dấu chuyển đi
+                      </Button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {formDialogState && (

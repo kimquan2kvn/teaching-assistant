@@ -11,11 +11,17 @@ export default function QuanLyGiaoVienPage() {
   const { data: teachers, isLoading, isError } = useGetTeachersQuery();
   const [setTeacherActive] = useSetTeacherActiveMutation();
   const [confirmTeacher, setConfirmTeacher] = useState(null);
+  const [error, setError] = useState(null);
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!confirmTeacher) return;
-    setTeacherActive({ id: confirmTeacher.id, isActive: !confirmTeacher.isActive });
-    setConfirmTeacher(null);
+    setError(null);
+    try {
+      await setTeacherActive({ id: confirmTeacher.id, isActive: !confirmTeacher.isActive }).unwrap();
+      setConfirmTeacher(null);
+    } catch (err) {
+      setError(err?.data?.message ?? 'Thao tác thất bại, vui lòng thử lại');
+    }
   }
 
   if (isLoading) {
@@ -29,40 +35,50 @@ export default function QuanLyGiaoVienPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="mb-4 font-heading text-xl font-semibold">Quản lý giáo viên</h1>
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-border text-fg-muted">
-            <th className="py-2 font-medium">Tên đăng nhập</th>
-            <th className="py-2 font-medium">Họ tên</th>
-            <th className="py-2 font-medium">Trạng thái</th>
-            <th className="py-2 font-medium" />
-            <th className="py-2 font-medium" />
-          </tr>
-        </thead>
-        <tbody>
-          {teachers?.map((teacher) => (
-            <tr key={teacher.id} className="border-b border-border">
-              <td className="py-2">{teacher.username}</td>
-              <td className="py-2">{teacher.fullName}</td>
-              <td className="py-2">
-                <Badge variant={teacher.isActive ? 'success' : 'danger'}>
-                  {teacher.isActive ? 'Hoạt động' : 'Đã khóa'}
-                </Badge>
-              </td>
-              <td className="py-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setConfirmTeacher(teacher)}>
-                  {teacher.isActive ? 'Khóa' : 'Mở khóa'}
-                </Button>
-              </td>
-              <td className="py-2">
-                <Link href={`/quan-ly-giao-vien/${teacher.id}`} className="text-brand underline">
-                  Xem vị trí
-                </Link>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-border text-fg-muted">
+              <th className="py-2 font-medium">Tên đăng nhập</th>
+              <th className="py-2 font-medium">Họ tên</th>
+              <th className="py-2 font-medium">Trạng thái</th>
+              <th className="py-2 font-medium" />
+              <th className="py-2 font-medium" />
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {teachers?.map((teacher) => (
+              <tr key={teacher.id} className="border-b border-border">
+                <td className="py-2">{teacher.username}</td>
+                <td className="py-2">{teacher.fullName}</td>
+                <td className="py-2">
+                  <Badge variant={teacher.isActive ? 'success' : 'danger'}>
+                    {teacher.isActive ? 'Hoạt động' : 'Đã khóa'}
+                  </Badge>
+                </td>
+                <td className="py-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setError(null);
+                      setConfirmTeacher(teacher);
+                    }}
+                  >
+                    {teacher.isActive ? 'Khóa' : 'Mở khóa'}
+                  </Button>
+                </td>
+                <td className="py-2">
+                  <Link href={`/quan-ly-giao-vien/${teacher.id}`} className="text-brand underline">
+                    Xem vị trí
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <Dialog open={!!confirmTeacher} onOpenChange={(open) => !open && setConfirmTeacher(null)}>
         <DialogContent>
@@ -71,6 +87,7 @@ export default function QuanLyGiaoVienPage() {
               ? 'Khóa tài khoản giáo viên này?'
               : 'Mở khóa tài khoản giáo viên này?'}
           </DialogTitle>
+          {error && <p className="text-sm text-danger">{error}</p>}
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">

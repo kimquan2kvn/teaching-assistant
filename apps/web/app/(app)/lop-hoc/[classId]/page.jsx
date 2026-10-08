@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useGetClassDetailQuery } from '@/lib/store/classes-api';
 import { useReleasePositionMutation } from '@/lib/store/positions-api';
@@ -14,11 +15,51 @@ function positionLabel(position) {
   return position.type === 'HOMEROOM' ? 'Chủ nhiệm' : position.subject;
 }
 
+function ReleasePositionButton({ position }) {
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState(null);
+  const [releasePosition] = useReleasePositionMutation();
+
+  async function handleConfirm() {
+    setError(null);
+    try {
+      await releasePosition(position.id).unwrap();
+      setOpen(false);
+    } catch (err) {
+      setError(err?.data?.message ?? 'Ngừng phụ trách thất bại, vui lòng thử lại');
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm">
+          Ngừng phụ trách
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogTitle>Ngừng phụ trách?</DialogTitle>
+        <p className="text-sm text-fg-muted">Bạn sẽ không còn phụ trách vị trí này.</p>
+        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Huỷ
+            </Button>
+          </DialogClose>
+          <Button type="button" onClick={handleConfirm}>
+            Xác nhận
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ClassDetailPage({ params }) {
   const { classId } = params;
   const currentUser = useSelector(selectCurrentUser);
   const { data, isLoading, isError, error } = useGetClassDetailQuery(classId);
-  const [releasePosition] = useReleasePositionMutation();
 
   if (isLoading) {
     return <div className="p-6 text-fg-muted">Đang tải...</div>;
@@ -59,33 +100,7 @@ export default function ClassDetailPage({ params }) {
             <span className="flex-1">
               {position.holder ? position.holder.fullName : <Badge variant="muted">Trống</Badge>}
             </span>
-            {position.holder?.id === currentUser?.id && (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button type="button" variant="outline" size="sm">
-                    Ngừng phụ trách
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogTitle>Ngừng phụ trách?</DialogTitle>
-                  <p className="text-sm text-fg-muted">
-                    Bạn sẽ không còn phụ trách vị trí này trong lớp {klass.name}.
-                  </p>
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <Button type="button" variant="outline">
-                        Huỷ
-                      </Button>
-                    </DialogClose>
-                    <DialogClose asChild>
-                      <Button type="button" onClick={() => releasePosition(position.id)}>
-                        Xác nhận
-                      </Button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
+            {position.holder?.id === currentUser?.id && <ReleasePositionButton position={position} />}
           </li>
         ))}
       </ul>

@@ -123,6 +123,22 @@ test('preview toàn bộ hợp lệ → nút "Xác nhận nhập" bật, bấm g
   );
 });
 
+test('bảng xem trước cuộn ngang được trên màn hình hẹp (mobile), không làm tràn cả trang', async () => {
+  importPreviewMock.mockReturnValue({
+    unwrap: () =>
+      Promise.resolve({
+        rows: [{ rowNumber: 2, fullName: 'Nguyễn Văn A', dob: '2015-05-20T00:00:00.000Z', errors: [] }],
+      }),
+  });
+  renderPage();
+
+  await userEvent.upload(screen.getByLabelText('Chọn file Excel'), makeFile());
+  await userEvent.click(screen.getByRole('button', { name: 'Xem trước' }));
+
+  const table = await screen.findByRole('table');
+  expect(table.closest('[class*="overflow-x-auto"]')).not.toBeNull();
+});
+
 test('confirm thất bại (400) giữ nguyên bảng preview trên màn hình, hiện ĐÚNG message lỗi backend', async () => {
   importPreviewMock.mockReturnValue({
     unwrap: () =>

@@ -61,3 +61,24 @@ test('giáo viên isActive: false hiện nút "Mở khóa", bấm xác nhận g�
 
   expect(setTeacherActiveMock).toHaveBeenCalledWith({ id: 'gv-2', isActive: true });
 });
+
+test('bảng giáo viên cuộn ngang được trên màn hình hẹp (mobile), không làm tràn cả trang', () => {
+  teachersData = [{ id: 'gv-1', username: 'gv01', fullName: 'Nguyễn Văn A', isActive: true }];
+  renderPage();
+  const table = screen.getByRole('table');
+  expect(table.closest('[class*="overflow-x-auto"]')).not.toBeNull();
+});
+
+test('khóa/mở khóa thất bại hiện đúng error.data.message, KHÔNG đóng dialog', async () => {
+  teachersData = [{ id: 'gv-1', username: 'gv01', fullName: 'Nguyễn Văn A', isActive: true }];
+  setTeacherActiveMock.mockReturnValue({
+    unwrap: () => Promise.reject({ status: 404, data: { message: 'Không tìm thấy giáo viên với mã này' } }),
+  });
+  renderPage();
+
+  await userEvent.click(screen.getByRole('button', { name: 'Khóa' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Xác nhận' }));
+
+  expect(await screen.findByText('Không tìm thấy giáo viên với mã này')).toBeInTheDocument();
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+});

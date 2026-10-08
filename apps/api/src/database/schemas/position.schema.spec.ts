@@ -16,4 +16,9 @@ describe('PositionSchema indexes', () => {
       expect.objectContaining({ unique: true, partialFilterExpression: { type: 'HOMEROOM' } }),
     ]);
   });
+
+  it('có index theo holderId (GET /positions/mine và GET /admin/teachers/:id/positions đều query theo field này không kèm classId, nếu thiếu index sẽ phải quét toàn bộ collection)', () => {
+    const indexes = PositionSchema.indexes();
+    expect(indexes).toContainEqual([{ holderId: 1 }, expect.objectContaining({})]);
+  });
 });
