@@ -81,3 +81,12 @@ Giả định về **nghiệp vụ** (business rules) sẽ được hỏi lại 
 - **Tuần tính xếp loại rèn luyện**: tuần ISO (Thứ Hai 00:00 UTC – Chủ Nhật 23:59 UTC), không phụ thuộc cấu hình
   "Thứ Bảy có phải ngày học" (đó là khái niệm của Phase 3 cho thống kê ngày nghỉ/dạy, không phải ranh giới tuần
   dùng để reset điểm rèn luyện).
+- **Số dòng chép phạt mặc định cho rule "đủ N vi phạm/tuần"**: yêu cầu gốc chỉ cho công thức số dòng của rule
+  "Không làm BTVN" (20/30/40/50 theo số lần lặp), KHÔNG cho công thức cho rule chung "đủ 2 lỗi bất kỳ/tuần".
+  Thêm `SchoolConfig.defaultWeeklyPunishmentLines` (mặc định 20, ADMIN cấu hình được qua
+  `PATCH /school-config`), GV sửa được riêng từng chép phạt sau khi tạo qua `PATCH /punishments/:id/lines`
+  (1-100) — không có quyết định nghiệp vụ nào bị khoá cứng, chỉ là 1 giá trị khởi điểm hợp lý.
+- **Xếp loại rèn luyện tháng/học kỳ**: spec Phase 2 chỉ làm xếp loại THEO TUẦN (có công thức rõ: base 100 +
+  tổng điểm tuần). Tháng/học kỳ (yêu cầu gốc có nhắc, mô tả là "trung bình các tuần") CHƯA làm ở Phase 2 vì
+  chưa có tiêu chí test/API shape cụ thể nào được xác nhận — để lại cho lần cần dùng thật, lúc đó sẽ hỏi lại
+  hình dạng API (vd FE cần trả về điểm trung bình hay cả danh sách từng tuần kèm theo).
