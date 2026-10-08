@@ -2,6 +2,7 @@ import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/co
 import { InjectModel } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
 import { Model } from 'mongoose';
+import { randomUUID } from 'crypto';
 import * as argon2 from 'argon2';
 import { User } from '../database/schemas/user.schema';
 import type { RegisterInput, LoginInput, ChangePasswordInput } from '@so-chu-nhiem/shared';
@@ -127,7 +128,10 @@ export class AuthService {
       { secret: process.env.JWT_ACCESS_SECRET ?? 'dev-access-secret', expiresIn: ACCESS_TOKEN_TTL },
     );
     const refreshToken = this.jwtService.sign(
-      { sub: String(user._id) },
+      // `jti` ngẫu nhiên đảm bảo 2 lần cấp refresh token liên tiếp trong cùng 1 giây (cùng `iat`) vẫn ra
+      // 2 chuỗi token khác nhau — nếu không, token cũ và token mới xoay vòng có thể trùng y hệt, khiến
+      // việc chặn refresh token cũ đã xoay vòng trở nên vô tác dụng.
+      { sub: String(user._id), jti: randomUUID() },
       { secret: process.env.JWT_REFRESH_SECRET ?? 'dev-refresh-secret', expiresIn: REFRESH_TOKEN_TTL },
     );
     return { accessToken, refreshToken };

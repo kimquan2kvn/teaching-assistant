@@ -16,4 +16,9 @@ describe('buildTestMongoUri', () => {
     delete process.env.MONGO_TEST_URI;
     expect(() => buildTestMongoUri('x')).toThrow(/MONGO_TEST_URI/);
   });
+
+  it('giữ ĐÚNG tên replica set thật của MONGO_TEST_URI (vd "testset" do MongoMemoryReplSet đặt mặc định), không hard-code "rs0"', () => {
+    process.env.MONGO_TEST_URI = 'mongodb://127.0.0.1:54321/?replicaSet=testset';
+    expect(buildTestMongoUri('auth_e2e')).toBe('mongodb://127.0.0.1:54321/auth_e2e?replicaSet=testset');
+  });
 });
