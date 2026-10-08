@@ -67,3 +67,17 @@ Giả định về **nghiệp vụ** (business rules) sẽ được hỏi lại 
   trong yêu cầu gốc, thêm để tránh 1 request đơn lẻ (vô tình hoặc cố ý) làm quá tải request body hoặc tạo hàng
   loạt bản ghi không giới hạn. Có thể nới nếu trường thực tế cần nhập lớp > 2000 học sinh/lần (không hợp lý với
   quy mô 1 lớp phổ thông nên chưa coi là giới hạn cần xem lại ngay).
+
+## Phase 2
+
+- **GVCN ghi vi phạm/điểm cộng gắn vào vị trí nào**: yêu cầu gốc viết "GVCN... Vi phạm/điểm cộng (tất cả)"
+  nhưng không nói rõ "(tất cả)" là ghi-được-vào-mọi-position hay chỉ là xem-được-toàn-bộ-lớp. Chọn cách đơn
+  giản, đối xứng với điểm danh (đã được người dùng xác nhận là "cả hai song song" — GVCN và GVBM ghi độc lập
+  theo đúng position mình giữ): `ConductLog` do GVCN ghi luôn gắn vào position HOMEROOM của lớp (không ghi hộ
+  vào position SUBJECT của giáo viên khác), nhưng GVCN vẫn ĐỌC được vi phạm/điểm cộng của mọi position trong
+  lớp (route `GET /classes/:classId/conduct-logs` gộp toàn bộ, không lọc theo position) — nghĩa là "(tất cả)"
+  trong yêu cầu gốc được hiểu là phạm vi XEM, không phải quyền ghi hộ môn khác. Nếu người dùng cần GVCN ghi được
+  vi phạm vào đúng 1 môn cụ thể (thay vì luôn gắn HOMEROOM), cần sửa lại thiết kế này.
+- **Tuần tính xếp loại rèn luyện**: tuần ISO (Thứ Hai 00:00 UTC – Chủ Nhật 23:59 UTC), không phụ thuộc cấu hình
+  "Thứ Bảy có phải ngày học" (đó là khái niệm của Phase 3 cho thống kê ngày nghỉ/dạy, không phải ranh giới tuần
+  dùng để reset điểm rèn luyện).
