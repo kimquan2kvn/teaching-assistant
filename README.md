@@ -30,6 +30,15 @@ pnpm run dev:api   # http://localhost:3001
 pnpm run dev:web   # http://localhost:3000
 ```
 
+## Seed dữ liệu dev (admin + giáo viên mẫu + 1 lớp)
+
+```bash
+pnpm --filter api run seed
+```
+
+Chỉ chạy ở môi trường dev — script sẽ **xoá sạch** dữ liệu `User`/`SchoolYear`/`Class`/`Position` hiện có
+trước khi tạo lại. Sau khi chạy, xem console để lấy username/mật khẩu và mã lớp vừa tạo.
+
 ## Kiểm thử
 
 ```bash

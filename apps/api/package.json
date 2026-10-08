@@ -6,7 +6,8 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "lint": "eslint src test",
-    "test": "jest"
+    "test": "jest",
+    "seed": "ts-node src/seed/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.6",
