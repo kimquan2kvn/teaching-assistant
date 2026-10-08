@@ -16,10 +16,13 @@ import { SchoolYear } from '../database/schemas/school-year.schema';
 import { Class } from '../database/schemas/class.schema';
 import { Position } from '../database/schemas/position.schema';
 import { Student } from '../database/schemas/student.schema';
+import { ConductCatalogItem } from '../database/schemas/conduct-catalog-item.schema';
+import { SchoolConfig } from '../database/schemas/school-config.schema';
 import { AuthService } from '../auth/auth.service';
 import { SchoolYearsService } from '../school-years/school-years.service';
 import { ClassesService } from '../classes/classes.service';
 import { StudentsService } from '../students/students.service';
+import { ConductCatalogService } from '../conduct-catalog/conduct-catalog.service';
 
 const SEED_PASSWORD = 'Seed@123456';
 
@@ -41,6 +44,8 @@ async function run() {
     const classModel = app.get<Model<Class>>(getModelToken(Class.name));
     const positionModel = app.get<Model<Position>>(getModelToken(Position.name));
     const studentModel = app.get<Model<Student>>(getModelToken(Student.name));
+    const conductCatalogItemModel = app.get<Model<ConductCatalogItem>>(getModelToken(ConductCatalogItem.name));
+    const schoolConfigModel = app.get<Model<SchoolConfig>>(getModelToken(SchoolConfig.name));
 
     await Promise.all([
       userModel.deleteMany({}),
@@ -48,6 +53,8 @@ async function run() {
       classModel.deleteMany({}),
       positionModel.deleteMany({}),
       studentModel.deleteMany({}),
+      conductCatalogItemModel.deleteMany({}),
+      schoolConfigModel.deleteMany({}),
     ]);
 
     const schoolYearsService = app.get(SchoolYearsService);
@@ -90,11 +97,25 @@ async function run() {
       await studentsService.create(String(createdClass._id), { fullName: `Học sinh mẫu ${stt}` });
     }
 
+    await schoolConfigModel.create({});
+
+    const conductCatalogService = app.get(ConductCatalogService);
+    await conductCatalogService.create({ label: 'Đi học muộn', kind: 'VIOLATION', points: 5 });
+    await conductCatalogService.create({ label: 'Mất trật tự', kind: 'VIOLATION', points: 10 });
+    await conductCatalogService.create({
+      label: 'Không làm bài tập về nhà',
+      kind: 'VIOLATION',
+      points: 5,
+      specialRule: 'HOMEWORK_NOT_DONE',
+    });
+    await conductCatalogService.create({ label: 'Phát biểu xây dựng bài', kind: 'MERIT', points: 5 });
+
     console.log('--- Seed hoàn tất ---');
     console.log(`Mật khẩu dùng chung cho mọi tài khoản seed: ${SEED_PASSWORD}`);
     console.log('Admin: username=admin');
     teacherUsernames.forEach((u) => console.log(`Giáo viên: username=${u}`));
     console.log(`Lớp 11A4 — mã lớp: ${createdClass.code} (gv1 là GVCN), 12 học sinh mẫu`);
+    console.log('Cấu hình trường mặc định và 4 mục danh mục vi phạm/điểm cộng mẫu đã tạo.');
   } finally {
     await app.close();
   }
