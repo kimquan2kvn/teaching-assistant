@@ -9,6 +9,7 @@ import { PositionsModule } from './positions/positions.module';
 import { StudentsModule } from './students/students.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { ConductCatalogModule } from './conduct-catalog/conduct-catalog.module';
+import { ConductLogModule } from './conduct-log/conduct-log.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ConductCatalogModule } from './conduct-catalog/conduct-catalog.module';
     StudentsModule,
     AttendanceModule,
     ConductCatalogModule,
+    ConductLogModule,
   ],
 })
 export class AppModule {}
