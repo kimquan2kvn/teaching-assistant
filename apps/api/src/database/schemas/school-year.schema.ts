@@ -11,6 +11,10 @@ export class SchoolYear extends Document {
 
   @Prop({ required: true })
   endDate: Date;
+
+  @Prop({ default: false })
+  isCurrent: boolean;
 }
 
 export const SchoolYearSchema = SchemaFactory.createForClass(SchoolYear);
+SchoolYearSchema.index({ isCurrent: 1 }, { unique: true, partialFilterExpression: { isCurrent: true } });

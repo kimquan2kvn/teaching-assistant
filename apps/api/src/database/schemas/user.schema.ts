@@ -17,8 +17,17 @@ export class User extends Document {
   @Prop({ required: true })
   passwordHash: string;
 
+  @Prop({ required: true })
+  fullName: string;
+
   @Prop({ default: false })
   mustChangePassword: boolean;
+
+  @Prop({ default: true })
+  isActive: boolean;
+
+  @Prop()
+  refreshTokenHash?: string;
 
   @Prop({ type: Types.ObjectId, ref: 'Student' })
   studentId?: Types.ObjectId;
