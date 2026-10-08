@@ -92,4 +92,58 @@ describe('Admin (e2e)', () => {
     expect(loginRes.status).toBe(401);
     void teacherToken;
   });
+
+  it('body thiếu isActive hoặc sai kiểu bị từ chối (400), không âm thầm thành công', async () => {
+    const teacherToken = await registerAndPromote('gv.active-validate', 'TEACHER');
+    const adminToken = await registerAndPromote('admin.validate', 'ADMIN');
+    const listRes = await request(app.getHttpServer())
+      .get('/admin/teachers')
+      .set('Authorization', `Bearer ${adminToken}`);
+    const target = (listRes.body as TeacherListItem[]).find((t) => t.username === 'gv.active-validate');
+
+    await request(app.getHttpServer())
+      .patch(`/admin/teachers/${target!.id}/active`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch(`/admin/teachers/${target!.id}/active`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ isActive: 'yes' })
+      .expect(400);
+    void teacherToken;
+  });
+
+  it('id không tồn tại trả về 404 thay vì "success: true" im lặng', async () => {
+    const adminToken = await registerAndPromote('admin.notfound', 'ADMIN');
+    await request(app.getHttpServer())
+      .patch('/admin/teachers/64b1f9f9f9f9f9f9f9f9f9f9/active')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ isActive: false })
+      .expect(404);
+  });
+
+  it('id không phải ObjectId hợp lệ trả về 400 thay vì 500', async () => {
+    const adminToken = await registerAndPromote('admin.badid', 'ADMIN');
+    await request(app.getHttpServer())
+      .patch('/admin/teachers/khong-phai-object-id/active')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ isActive: false })
+      .expect(400);
+  });
+
+  it('không khóa được một ADMIN khác qua endpoint "teachers" (lọc đúng role: TEACHER)', async () => {
+    const adminToken = await registerAndPromote('admin.target-filter', 'ADMIN');
+    const otherAdminToken = await registerAndPromote('admin.victim', 'ADMIN');
+    const otherAdminMe = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${otherAdminToken}`);
+
+    await request(app.getHttpServer())
+      .patch(`/admin/teachers/${otherAdminMe.body.id}/active`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ isActive: false })
+      .expect(404);
+  });
 });

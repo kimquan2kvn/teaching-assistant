@@ -29,6 +29,8 @@ describe('Classes (e2e)', () => {
   let classModel: Model<Class>;
   let schoolYearModel: Model<SchoolYear>;
   let userModel: Model<User>;
+  let positionModel: Model<Position>;
+  let classesService: ClassesService;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -51,6 +53,8 @@ describe('Classes (e2e)', () => {
     classModel = moduleRef.get(getModelToken(Class.name));
     schoolYearModel = moduleRef.get(getModelToken(SchoolYear.name));
     userModel = moduleRef.get(getModelToken(User.name));
+    positionModel = moduleRef.get(getModelToken(Position.name));
+    classesService = moduleRef.get(ClassesService);
 
     await schoolYearModel.create({
       name: '2025-2026',
@@ -77,6 +81,29 @@ describe('Classes (e2e)', () => {
       .send({ username, password: 'MatKhau123' });
     return { token: loginRes.body.accessToken as string, userId: loginRes.body.user.id as string };
   }
+
+  async function registerStudent(username: string) {
+    const argon2 = await import('argon2');
+    await userModel.create({
+      username,
+      passwordHash: await argon2.hash('MatKhau123'),
+      fullName: username,
+      role: 'STUDENT',
+    });
+    const loginRes = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ username, password: 'MatKhau123' });
+    return loginRes.body.accessToken as string;
+  }
+
+  it('STUDENT gọi POST /classes bị từ chối (403) — chưa có route tự đăng ký cho STUDENT ở Phase 1 nên tạo trực tiếp qua model', async () => {
+    const token = await registerStudent('hs.tao-lop');
+    await request(app.getHttpServer())
+      .post('/classes')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: '11A9', claimHomeroom: false })
+      .expect(403);
+  });
 
   it('tạo lớp sinh đúng mã dạng <tên>-<5 ký tự>, tạo đủ 1 HOMEROOM + 13 SUBJECT position, đều holderId=null trừ khi claimHomeroom', async () => {
     const { token, userId } = await registerAndPromote('gv.tao-lop', 'TEACHER');
@@ -143,5 +170,24 @@ describe('Classes (e2e)', () => {
       .expect(400);
     const after = await classModel.countDocuments({});
     expect(after).toBe(before);
+  });
+
+  it('nếu insertMany Position thất bại GIỮA transaction thì Class vừa tạo cũng bị rollback thật (không chỉ chặn ở tầng validate HTTP)', async () => {
+    const { userId } = await registerAndPromote('gv.rollback-that', 'TEACHER');
+    const classesBefore = await classModel.countDocuments({});
+    const positionsBefore = await positionModel.countDocuments({});
+
+    const spy = jest.spyOn(positionModel, 'insertMany').mockRejectedValueOnce(new Error('Lỗi giả lập giữa transaction'));
+
+    await expect(
+      classesService.create(userId, { name: 'RollbackThat', claimHomeroom: false }),
+    ).rejects.toThrow('Lỗi giả lập giữa transaction');
+
+    spy.mockRestore();
+
+    const classesAfter = await classModel.countDocuments({});
+    const positionsAfter = await positionModel.countDocuments({});
+    expect(classesAfter).toBe(classesBefore);
+    expect(positionsAfter).toBe(positionsBefore);
   });
 });

@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, Post, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
-import type { Response } from 'express';
+import { Body, Controller, Get, HttpCode, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { registerSchema, loginSchema, changePasswordSchema } from '@so-chu-nhiem/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -12,7 +12,9 @@ const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 function setRefreshCookie(res: Response, token: string) {
   res.cookie(REFRESH_COOKIE, token, {
     httpOnly: true,
-    secure: true,
+    // `secure` chỉ bật ở production — trình duyệt BỎ cookie có `secure: true` hoàn toàn khi trang chạy qua
+    // http:// (vd http://localhost:3000 lúc dev), khiến cookie không bao giờ được set được trong dev.
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: REFRESH_COOKIE_MAX_AGE_MS,
   });
@@ -43,8 +45,14 @@ export class AuthController {
   }
 
   @Post('refresh')
-  async refresh(@Body() body: { refreshToken?: string }, @Res({ passthrough: true }) res: Response) {
-    const refreshToken = body?.refreshToken;
+  async refresh(
+    @Body() body: { refreshToken?: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    // Web dùng cookie (không cần FE tự lưu/gửi token); app di động sau này không có cookie nên gửi qua body —
+    // body được ưu tiên khi cả hai cùng có (vd client cố tình truyền tay để refresh 1 phiên khác với cookie).
+    const refreshToken = body?.refreshToken ?? (req.cookies?.[REFRESH_COOKIE] as string | undefined);
     if (!refreshToken) {
       throw new UnauthorizedException('Refresh token không hợp lệ');
     }

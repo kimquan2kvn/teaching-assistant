@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { User, UserSchema } from '../database/schemas/user.schema';
 import { AuthController } from './auth.controller';
@@ -25,6 +26,7 @@ describe('Auth (e2e)', () => {
       providers: [AuthService, JwtStrategy],
     }).compile();
     app = moduleRef.createNestApplication();
+    app.use(cookieParser());
     await app.init();
   });
 
@@ -76,5 +78,60 @@ describe('Auth (e2e)', () => {
 
   it('GET /auth/me không có token trả về 401', async () => {
     await request(app.getHttpServer()).get('/auth/me').expect(401);
+  });
+
+  it('đổi mật khẩu thu hồi refresh token cũ — không dùng lại được sau khi đổi', async () => {
+    const registerRes = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ username: 'gv.doi-mk', password: 'MatKhau123', fullName: 'GV Đổi MK' });
+    const { accessToken, refreshToken: oldRefreshToken } = registerRes.body;
+
+    await request(app.getHttpServer())
+      .post('/auth/change-password')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ oldPassword: 'MatKhau123', newPassword: 'MatKhauMoi789' })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken: oldRefreshToken })
+      .expect(401);
+  });
+
+  it('logout thu hồi refresh token — không dùng lại được sau khi đăng xuất', async () => {
+    const registerRes = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ username: 'gv.logout', password: 'MatKhau123', fullName: 'GV Logout' });
+    const { accessToken, refreshToken } = registerRes.body;
+
+    await request(app.getHttpServer())
+      .post('/auth/logout')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken })
+      .expect(401);
+  });
+
+  it('web refresh được bằng cookie, không cần FE tự gửi refreshToken trong body', async () => {
+    const registerRes = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ username: 'gv.cookie', password: 'MatKhau123', fullName: 'GV Cookie' });
+
+    const setCookieHeader = registerRes.headers['set-cookie'];
+    expect(setCookieHeader).toBeDefined();
+    const refreshCookie = (Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader]).find((c: string) =>
+      c.startsWith('refresh_token='),
+    );
+    expect(refreshCookie).toBeDefined();
+
+    const refreshRes = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', refreshCookie!)
+      .send({});
+    expect(refreshRes.status).toBe(201);
+    expect(typeof refreshRes.body.accessToken).toBe('string');
   });
 });

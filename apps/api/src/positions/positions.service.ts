@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import type { JoinClassInput } from '@so-chu-nhiem/shared';
 import { Position } from '../database/schemas/position.schema';
 import { User } from '../database/schemas/user.schema';
@@ -34,6 +34,9 @@ export class PositionsService {
   }
 
   async release(userId: string, positionId: string): Promise<Position> {
+    if (!Types.ObjectId.isValid(positionId)) {
+      throw new BadRequestException('Mã vị trí không hợp lệ');
+    }
     const position = await this.positionModel.findById(positionId).exec();
     if (!position) {
       throw new NotFoundException('Không tìm thấy vị trí này');
@@ -47,6 +50,9 @@ export class PositionsService {
   }
 
   async reassign(teacherId: string, positionId: string): Promise<Position> {
+    if (!Types.ObjectId.isValid(teacherId) || !Types.ObjectId.isValid(positionId)) {
+      throw new BadRequestException('Mã giáo viên hoặc mã vị trí không hợp lệ');
+    }
     const teacher = await this.userModel.findById(teacherId).exec();
     if (!teacher || teacher.role !== 'TEACHER') {
       throw new BadRequestException('Người được gán phải là giáo viên');

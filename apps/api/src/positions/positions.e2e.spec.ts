@@ -175,4 +175,19 @@ describe('Positions (e2e)', () => {
     const updated = await positionModel.findById(positionId).exec();
     expect(String(updated?.holderId)).toBe(newTeacherId);
   });
+
+  it('id không phải ObjectId hợp lệ trả về 400 thay vì 500 (release, reassign, reassign teacherId)', async () => {
+    const { token } = await registerAndPromote('gv.badid-release', 'TEACHER');
+    await request(app.getHttpServer())
+      .post('/positions/khong-phai-id/release')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400);
+
+    const { token: adminToken } = await registerAndPromote('admin.badid', 'ADMIN');
+    await request(app.getHttpServer())
+      .patch('/positions/khong-phai-id/reassign')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ teacherId: 'cung-khong-phai-id' })
+      .expect(400);
+  });
 });

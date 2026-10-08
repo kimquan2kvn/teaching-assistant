@@ -22,6 +22,15 @@ import { ClassesService } from '../classes/classes.service';
 const SEED_PASSWORD = 'Seed@123456';
 
 async function run() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      'Seed script bị chặn: NODE_ENV=production. Script này xoá sạch User/SchoolYear/Class/Position, ' +
+        'không được chạy trên môi trường production.',
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn'] });
 
   try {

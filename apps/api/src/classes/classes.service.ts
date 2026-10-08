@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
+import { randomInt } from 'crypto';
 import { SUBJECTS } from '@so-chu-nhiem/shared';
 import type { CreateClassInput } from '@so-chu-nhiem/shared';
 import { Class } from '../database/schemas/class.schema';
@@ -11,10 +12,13 @@ const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_SUFFIX_LENGTH = 5;
 const MAX_CODE_ATTEMPTS = 3;
 
-function generateClassCode(name: string): string {
+// Mã lớp là "capability": ai có mã là nhận được vị trí SUBJECT còn trống của lớp đó (POST /positions/join).
+// Phải dùng CSPRNG (crypto.randomInt), không dùng Math.random() — trạng thái của Math.random có thể bị suy ra
+// ngược từ vài kết quả đã biết, nghĩa là 1 giáo viên tạo 2 lớp có thể đoán được mã lớp tiếp theo.
+export function generateClassCode(name: string): string {
   let suffix = '';
   for (let i = 0; i < CODE_SUFFIX_LENGTH; i++) {
-    suffix += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+    suffix += CODE_ALPHABET[randomInt(0, CODE_ALPHABET.length)];
   }
   return `${name}-${suffix}`;
 }

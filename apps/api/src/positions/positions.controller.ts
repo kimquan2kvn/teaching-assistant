@@ -10,6 +10,7 @@ import { PositionsService } from './positions.service';
 
 @Controller('positions')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('TEACHER', 'ADMIN')
 export class PositionsController {
   constructor(private readonly positionsService: PositionsService) {}
 

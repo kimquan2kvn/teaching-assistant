@@ -5,3 +5,4 @@ export * from './schemas/auth.schema';
 export * from './schemas/class.schema';
 export * from './schemas/position.schema';
 export * from './schemas/school-year.schema';
+export * from './schemas/admin.schema';

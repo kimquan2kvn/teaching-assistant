@@ -22,10 +22,13 @@ Giả định về **nghiệp vụ** (business rules) sẽ được hỏi lại 
 ## Phase 1
 
 - **Access/refresh token**: access token JWT 15 phút trả trong response body (FE giữ ở Redux, không persist).
-  Refresh token 30 ngày trả cả trong body lẫn set qua cookie `httpOnly` `Secure` `SameSite=Lax` (web dùng cookie;
-  endpoint refresh cũng chấp nhận refresh token qua body để dành cho app React Native sau này không có cookie).
-  Refresh token được lưu dạng hash (không lưu plaintext) trên `User.refreshTokenHash`, xoay vòng (rotate) mỗi lần
-  refresh, null khi logout — cho phép thu hồi.
+  Refresh token 30 ngày trả cả trong body lẫn set qua cookie `httpOnly` `SameSite=Lax` (`Secure` chỉ bật khi
+  `NODE_ENV=production` — bật cố định sẽ khiến trình duyệt bỏ cookie hoàn toàn khi chạy dev qua `http://`). Web
+  dùng cookie là nguồn chính (middleware `cookie-parser` đọc `req.cookies`); endpoint `/auth/refresh` ưu tiên
+  `body.refreshToken` nếu có, không thì đọc cookie — để app React Native sau này (không có cookie) vẫn dùng được
+  qua body. Refresh token được lưu dạng hash (không lưu plaintext) trên `User.refreshTokenHash`, xoay vòng
+  (rotate) mỗi lần refresh — kèm `jti` ngẫu nhiên để 2 lần cấp liên tiếp trong cùng 1 giây không bị trùng token —
+  null khi logout hoặc khi đổi mật khẩu — cho phép thu hồi.
 - **Băm mật khẩu**: dùng `argon2` (argon2id) — ưu tiên theo đúng thứ tự liệt kê trong yêu cầu gốc
   ("argon2/bcrypt"). Môi trường dev có sẵn gcc/make/python3 nên build native nếu cần sẽ không bị chặn.
 - **Trường `fullName` trên `User`**: mô hình dữ liệu gợi ý trong yêu cầu gốc không liệt kê trường tên hiển thị cho

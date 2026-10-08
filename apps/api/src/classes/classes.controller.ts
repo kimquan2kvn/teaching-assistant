@@ -4,10 +4,12 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { ClassesService } from './classes.service';
 
 @Controller('classes')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('TEACHER', 'ADMIN')
 export class ClassesController {
   constructor(private readonly classesService: ClassesService) {}
 

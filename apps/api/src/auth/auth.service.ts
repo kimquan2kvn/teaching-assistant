@@ -5,6 +5,7 @@ import { Model } from 'mongoose';
 import { randomUUID } from 'crypto';
 import * as argon2 from 'argon2';
 import { User } from '../database/schemas/user.schema';
+import { getJwtAccessSecret, getJwtRefreshSecret } from '../common/config/jwt-secrets';
 import type { RegisterInput, LoginInput, ChangePasswordInput } from '@so-chu-nhiem/shared';
 
 export interface AuthResult {
@@ -65,7 +66,7 @@ export class AuthService {
     let payload: { sub: string };
     try {
       payload = this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET ?? 'dev-refresh-secret',
+        secret: getJwtRefreshSecret(),
       });
     } catch {
       throw new UnauthorizedException('Refresh token không hợp lệ');
@@ -97,6 +98,9 @@ export class AuthService {
     }
     user.passwordHash = await argon2.hash(input.newPassword);
     user.mustChangePassword = false;
+    // Đổi mật khẩu phải thu hồi mọi phiên refresh token hiện có — nếu không, 1 refresh token bị lộ
+    // trước đó vẫn tiếp tục xoay vòng được sau khi người dùng đã chủ động đổi mật khẩu.
+    user.refreshTokenHash = undefined;
     await user.save();
   }
 
@@ -125,14 +129,14 @@ export class AuthService {
   private async issueTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
     const accessToken = this.jwtService.sign(
       { sub: String(user._id), role: user.role },
-      { secret: process.env.JWT_ACCESS_SECRET ?? 'dev-access-secret', expiresIn: ACCESS_TOKEN_TTL },
+      { secret: getJwtAccessSecret(), expiresIn: ACCESS_TOKEN_TTL },
     );
     const refreshToken = this.jwtService.sign(
       // `jti` ngẫu nhiên đảm bảo 2 lần cấp refresh token liên tiếp trong cùng 1 giây (cùng `iat`) vẫn ra
       // 2 chuỗi token khác nhau — nếu không, token cũ và token mới xoay vòng có thể trùng y hệt, khiến
       // việc chặn refresh token cũ đã xoay vòng trở nên vô tác dụng.
       { sub: String(user._id), jti: randomUUID() },
-      { secret: process.env.JWT_REFRESH_SECRET ?? 'dev-refresh-secret', expiresIn: REFRESH_TOKEN_TTL },
+      { secret: getJwtRefreshSecret(), expiresIn: REFRESH_TOKEN_TTL },
     );
     return { accessToken, refreshToken };
   }
