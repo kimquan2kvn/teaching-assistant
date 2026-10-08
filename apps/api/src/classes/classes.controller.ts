@@ -5,6 +5,8 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PositionGuard } from '../common/guards/position.guard';
+import { RequirePosition } from '../common/decorators/require-position.decorator';
 import { ClassesService } from './classes.service';
 
 @Controller('classes')
@@ -24,5 +26,13 @@ export class ClassesController {
   @Get(':code')
   async findByCode(@Param('code') code: string) {
     return this.classesService.findByCode(code);
+  }
+
+  // 2 segment path (:classId/detail) nên không đụng @Get(':code') 1 segment ở trên — Nest phân biệt theo số segment.
+  @Get(':classId/detail')
+  @UseGuards(PositionGuard)
+  @RequirePosition('ANY')
+  async findDetail(@Param('classId') classId: string) {
+    return this.classesService.findDetail(classId);
   }
 }

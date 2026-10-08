@@ -1,11 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
+import { Connection, Model, Types } from 'mongoose';
 import { randomInt } from 'crypto';
 import { SUBJECTS } from '@so-chu-nhiem/shared';
 import type { CreateClassInput } from '@so-chu-nhiem/shared';
 import { Class } from '../database/schemas/class.schema';
 import { Position } from '../database/schemas/position.schema';
+import { User } from '../database/schemas/user.schema';
 import { SchoolYearsService } from '../school-years/school-years.service';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -33,6 +34,18 @@ export interface PositionAvailabilityView {
   type: 'HOMEROOM' | 'SUBJECT';
   subject?: string;
   taken: boolean;
+}
+
+export interface PositionHolderView {
+  id: string;
+  type: 'HOMEROOM' | 'SUBJECT';
+  subject?: string;
+  holder: { id: string; fullName: string } | null;
+}
+
+export interface ClassDetailView {
+  class: { id: string; code: string; name: string };
+  positions: PositionHolderView[];
 }
 
 @Injectable()
@@ -115,6 +128,33 @@ export class ClassesService {
         type: p.type,
         subject: p.subject,
         taken: p.holderId !== null,
+      })),
+    };
+  }
+
+  async findDetail(classId: string): Promise<ClassDetailView> {
+    // classId không hợp lệ hoặc không tồn tại đều phải trả 404 rõ ràng cho client (ADMIN vượt qua PositionGuard
+    // nên có thể gọi tới đây với classId bất kỳ — không được để lọt CastError của Mongoose ra ngoài thành 500).
+    if (!Types.ObjectId.isValid(classId)) {
+      throw new NotFoundException('Không tìm thấy lớp');
+    }
+    const klass = await this.classModel.findById(classId).exec();
+    if (!klass) {
+      throw new NotFoundException('Không tìm thấy lớp');
+    }
+
+    const positions = await this.positionModel
+      .find({ classId: klass._id })
+      .populate<{ holderId: Pick<User, 'fullName'> & { _id: Types.ObjectId } }>('holderId', 'fullName')
+      .exec();
+
+    return {
+      class: { id: String(klass._id), code: klass.code, name: klass.name },
+      positions: positions.map((p) => ({
+        id: String(p._id),
+        type: p.type,
+        subject: p.subject,
+        holder: p.holderId ? { id: String(p.holderId._id), fullName: p.holderId.fullName } : null,
       })),
     };
   }

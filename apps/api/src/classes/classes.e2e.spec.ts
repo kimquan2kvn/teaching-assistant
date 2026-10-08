@@ -14,6 +14,7 @@ import { AuthController } from '../auth/auth.controller';
 import { AuthService } from '../auth/auth.service';
 import { JwtStrategy } from '../auth/jwt.strategy';
 import { SchoolYearsService } from '../school-years/school-years.service';
+import { PositionGuard } from '../common/guards/position.guard';
 import { ClassesController } from './classes.controller';
 import { ClassesService } from './classes.service';
 import { buildTestMongoUri } from '../../test/build-test-mongo-uri';
@@ -46,7 +47,7 @@ describe('Classes (e2e)', () => {
         PassportModule,
       ],
       controllers: [AuthController, ClassesController],
-      providers: [AuthService, JwtStrategy, SchoolYearsService, ClassesService, Reflector],
+      providers: [AuthService, JwtStrategy, SchoolYearsService, ClassesService, Reflector, PositionGuard],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -189,5 +190,88 @@ describe('Classes (e2e)', () => {
     const positionsAfter = await positionModel.countDocuments({});
     expect(classesAfter).toBe(classesBefore);
     expect(positionsAfter).toBe(positionsBefore);
+  });
+
+  describe('GET /classes/:classId/detail', () => {
+    it('giáo viên đang giữ 1 vị trí của lớp xem được chi tiết, thấy đúng tên người giữ từng vị trí (kể cả vị trí trống trả holder: null)', async () => {
+      const { token: tokenA, userId: userIdA } = await registerAndPromote('gv.chitiet-a', 'TEACHER');
+      const createRes = await request(app.getHttpServer())
+        .post('/classes')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ name: '11B1', claimHomeroom: true });
+      const classId = createRes.body.class._id as string;
+
+      const { userId: userIdC } = await registerAndPromote('gv.chitiet-c', 'TEACHER');
+      await positionModel.updateOne(
+        { classId, type: 'SUBJECT', subject: 'Toán' },
+        { holderId: userIdC },
+      );
+
+      const detailRes = await request(app.getHttpServer())
+        .get(`/classes/${classId}/detail`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(200);
+
+      expect(detailRes.body.class).toEqual({
+        id: classId,
+        code: createRes.body.class.code,
+        name: '11B1',
+      });
+
+      const positions = detailRes.body.positions as Array<{
+        type: string;
+        subject?: string;
+        holder: { id: string; fullName: string } | null;
+      }>;
+      const homeroom = positions.find((p) => p.type === 'HOMEROOM');
+      expect(homeroom?.holder).toEqual({ id: userIdA, fullName: 'gv.chitiet-a' });
+
+      const toan = positions.find((p) => p.subject === 'Toán');
+      expect(toan?.holder).toEqual({ id: userIdC, fullName: 'gv.chitiet-c' });
+
+      const vacant = positions.find((p) => p.subject === 'Ngữ văn');
+      expect(vacant?.holder).toBeNull();
+    });
+
+    it('giáo viên KHÔNG giữ vị trí nào của lớp đó bị từ chối (403)', async () => {
+      const { token: tokenA } = await registerAndPromote('gv.chitiet-khac-a', 'TEACHER');
+      const createRes = await request(app.getHttpServer())
+        .post('/classes')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ name: '11B2', claimHomeroom: true });
+      const classId = createRes.body.class._id as string;
+
+      const { token: tokenOutsider } = await registerAndPromote('gv.chitiet-ngoai', 'TEACHER');
+      await request(app.getHttpServer())
+        .get(`/classes/${classId}/detail`)
+        .set('Authorization', `Bearer ${tokenOutsider}`)
+        .expect(403);
+    });
+
+    it('ADMIN luôn xem được chi tiết lớp dù không giữ vị trí nào', async () => {
+      const { token: tokenA } = await registerAndPromote('gv.chitiet-admin-chu', 'TEACHER');
+      const createRes = await request(app.getHttpServer())
+        .post('/classes')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ name: '11B3', claimHomeroom: true });
+      const classId = createRes.body.class._id as string;
+
+      const { token: tokenAdmin } = await registerAndPromote('gv.chitiet-admin', 'ADMIN');
+      await request(app.getHttpServer())
+        .get(`/classes/${classId}/detail`)
+        .set('Authorization', `Bearer ${tokenAdmin}`)
+        .expect(200);
+    });
+
+    it('classId không tồn tại trả về 404 rõ ràng, không phải 500', async () => {
+      const { token: tokenAdmin } = await registerAndPromote('gv.chitiet-404', 'ADMIN');
+      const res = await request(app.getHttpServer())
+        .get('/classes/000000000000000000000000/detail')
+        .set('Authorization', `Bearer ${tokenAdmin}`)
+        .expect(404);
+      // Khẳng định đúng message của NotFoundException trong findDetail — không chỉ trùng mã 404 với
+      // handler mặc định của Nest khi route không khớp (2 trường hợp có cùng status nhưng khác message).
+      expect(res.body.message).toBe('Không tìm thấy lớp');
+    });
   });
 });
