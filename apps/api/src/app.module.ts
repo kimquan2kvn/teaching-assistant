@@ -10,6 +10,7 @@ import { StudentsModule } from './students/students.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { ConductCatalogModule } from './conduct-catalog/conduct-catalog.module';
 import { ConductLogModule } from './conduct-log/conduct-log.module';
+import { SchoolConfigModule } from './school-config/school-config.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ConductLogModule } from './conduct-log/conduct-log.module';
     AttendanceModule,
     ConductCatalogModule,
     ConductLogModule,
+    SchoolConfigModule,
   ],
 })
 export class AppModule {}
