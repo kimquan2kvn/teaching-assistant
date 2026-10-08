@@ -11,5 +11,6 @@ import { PositionGuard } from '../common/guards/position.guard';
   imports: [DatabaseModule, StudentsModule],
   controllers: [AttendanceController, ClassAttendanceController],
   providers: [AttendanceService, PositionOwnerGuard, PositionGuard],
+  exports: [AttendanceService],
 })
 export class AttendanceModule {}
