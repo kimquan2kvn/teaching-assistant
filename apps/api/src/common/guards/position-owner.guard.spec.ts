@@ -35,14 +35,15 @@ describe('PositionOwnerGuard', () => {
     expect(await guard.canActivate(context)).toBe(true);
   });
 
-  it('ADMIN luôn được bỏ qua', async () => {
-    const { guard, context } = buildContext({
+  it('ADMIN luôn được bỏ qua, và vẫn gắn request.position cho controller dùng @ResolvedPosition()', async () => {
+    const { guard, context, request } = buildContext({
       requirement: 'SELF',
       user: { id: 'admin-id', role: 'ADMIN' },
       positionId: POSITION_SUBJECT,
-      position: null,
+      position: { _id: POSITION_SUBJECT, classId: CLASS_A, holderId: HOLDER, type: 'SUBJECT' },
     });
     expect(await guard.canActivate(context)).toBe(true);
+    expect(request.position).toBeDefined();
   });
 
   it("'SELF': đúng chủ vị trí thì qua, gắn request.position", async () => {

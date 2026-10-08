@@ -22,12 +22,18 @@ export class PositionOwnerGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user as { id: string; role: string } | undefined;
     if (!user) return false;
-    if (user.role === 'ADMIN') return true;
 
     const positionId = request.params?.positionId;
     if (!positionId || !Types.ObjectId.isValid(positionId)) return false;
     const position = await this.positionModel.findById(positionId).exec();
     if (!position) return false;
+
+    // ADMIN bỏ qua kiểm tra chủ sở hữu, nhưng vẫn phải gắn request.position — route dùng @ResolvedPosition()
+    // (vd AttendanceController) cần giá trị này bất kể ai gọi, không chỉ khi người gọi là chủ thật sự.
+    if (user.role === 'ADMIN') {
+      request.position = position;
+      return true;
+    }
 
     if (String(position.holderId) === user.id) {
       request.position = position;
