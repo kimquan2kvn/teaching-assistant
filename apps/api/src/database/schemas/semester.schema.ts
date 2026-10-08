@@ -1,9 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document, Schema as MongooseSchema, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Semester extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'SchoolYear', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'SchoolYear', required: true })
   schoolYearId: Types.ObjectId;
 
   @Prop({ required: true, enum: [1, 2] })

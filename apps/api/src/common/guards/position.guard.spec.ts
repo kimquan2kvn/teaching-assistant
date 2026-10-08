@@ -33,8 +33,8 @@ describe('PositionGuard', () => {
   it('ADMIN luôn được bỏ qua, không query DB', async () => {
     const { guard, context } = buildContext({
       requirement: 'HOMEROOM',
-      user: { id: 'admin-1', role: 'ADMIN' },
-      classId: 'class-1',
+      user: { id: '6ac0000000000000000000a1', role: 'ADMIN' },
+      classId: '6ac0000000000000000000c1',
       foundPosition: null,
     });
     expect(await guard.canActivate(context)).toBe(true);
@@ -43,9 +43,9 @@ describe('PositionGuard', () => {
   it("'ANY': cho qua nếu đang giữ SUBJECT của đúng lớp", async () => {
     const { guard, context } = buildContext({
       requirement: 'ANY',
-      user: { id: 'teacher-1', role: 'TEACHER' },
-      classId: 'class-1',
-      foundPosition: { type: 'SUBJECT', holderId: 'teacher-1' },
+      user: { id: '6ac0000000000000000000b1', role: 'TEACHER' },
+      classId: '6ac0000000000000000000c1',
+      foundPosition: { type: 'SUBJECT', holderId: '6ac0000000000000000000b1' },
     });
     expect(await guard.canActivate(context)).toBe(true);
   });
@@ -53,8 +53,8 @@ describe('PositionGuard', () => {
   it("'HOMEROOM': từ chối nếu chỉ giữ SUBJECT (không phải HOMEROOM) của lớp đó", async () => {
     const { guard, context } = buildContext({
       requirement: 'HOMEROOM',
-      user: { id: 'teacher-1', role: 'TEACHER' },
-      classId: 'class-1',
+      user: { id: '6ac0000000000000000000b1', role: 'TEACHER' },
+      classId: '6ac0000000000000000000c1',
       foundPosition: null, // query lọc type: HOMEROOM sẽ không tìm thấy vì teacher-1 chỉ giữ SUBJECT
     });
     expect(await guard.canActivate(context)).toBe(false);
@@ -63,8 +63,8 @@ describe('PositionGuard', () => {
   it('từ chối nếu không giữ vị trí nào của đúng classId trong route', async () => {
     const { guard, context } = buildContext({
       requirement: 'ANY',
-      user: { id: 'teacher-1', role: 'TEACHER' },
-      classId: 'class-1',
+      user: { id: '6ac0000000000000000000b1', role: 'TEACHER' },
+      classId: '6ac0000000000000000000c1',
       foundPosition: null,
     });
     expect(await guard.canActivate(context)).toBe(false);

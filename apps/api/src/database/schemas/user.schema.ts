@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document, Schema as MongooseSchema, Types } from 'mongoose';
 
 export type UserRole = 'TEACHER' | 'STUDENT' | 'ADMIN';
 
@@ -29,7 +29,7 @@ export class User extends Document {
   @Prop()
   refreshTokenHash?: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'Student' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Student' })
   studentId?: Types.ObjectId;
 }
 

@@ -1,11 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document, Schema as MongooseSchema, Types } from 'mongoose';
 
 export type StudentStatus = 'ACTIVE' | 'TRANSFERRED';
 
 @Schema({ timestamps: true })
 export class Student extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'Class', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Class', required: true })
   classId: Types.ObjectId;
 
   @Prop({ required: true })

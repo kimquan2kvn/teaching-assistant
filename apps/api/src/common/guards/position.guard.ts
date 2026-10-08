@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Position } from '../../database/schemas/position.schema';
 import { REQUIRE_POSITION_KEY } from '../decorators/require-position.decorator';
 
@@ -25,9 +25,13 @@ export class PositionGuard implements CanActivate {
     if (user.role === 'ADMIN') return true;
 
     const classId = request.params?.classId;
-    if (!classId) return false;
+    if (!classId || !Types.ObjectId.isValid(classId)) return false;
 
-    const filter: Record<string, unknown> = { classId, holderId: user.id };
+    if (!Types.ObjectId.isValid(user.id)) return false;
+    const filter: Record<string, unknown> = {
+      classId: new Types.ObjectId(classId),
+      holderId: new Types.ObjectId(user.id),
+    };
     if (requirement === 'HOMEROOM') {
       filter.type = 'HOMEROOM';
     }
