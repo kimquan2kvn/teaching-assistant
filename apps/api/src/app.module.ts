@@ -11,6 +11,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { ConductCatalogModule } from './conduct-catalog/conduct-catalog.module';
 import { ConductLogModule } from './conduct-log/conduct-log.module';
 import { SchoolConfigModule } from './school-config/school-config.module';
+import { PunishmentsModule } from './punishments/punishments.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { SchoolConfigModule } from './school-config/school-config.module';
     ConductCatalogModule,
     ConductLogModule,
     SchoolConfigModule,
+    PunishmentsModule,
   ],
 })
 export class AppModule {}
