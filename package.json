@@ -1,0 +1,13 @@
+{
+  "name": "so-chu-nhiem",
+  "private": true,
+  "packageManager": "pnpm@12.3.4",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev:api": "pnpm --filter api run dev",
+    "dev:web": "pnpm --filter web run dev",
+    "lint": "pnpm -r run lint",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test"
+  }
+}
