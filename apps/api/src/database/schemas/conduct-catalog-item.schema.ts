@@ -15,7 +15,7 @@ export class ConductCatalogItem extends Document {
   @Prop({ required: true })
   points: number;
 
-  @Prop({ enum: ['HOMEWORK_NOT_DONE'], default: null })
+  @Prop({ type: String, enum: ['HOMEWORK_NOT_DONE'], default: null })
   specialRule: ConductSpecialRule | null;
 
   @Prop({ default: true })
