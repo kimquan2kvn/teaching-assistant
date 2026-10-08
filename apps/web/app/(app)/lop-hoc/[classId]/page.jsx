@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import { useGetClassDetailQuery } from '@/lib/store/classes-api';
 import { useReleasePositionMutation } from '@/lib/store/positions-api';
@@ -8,6 +9,15 @@ import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+
+// 5 trang con Phase 2 của 1 lớp cụ thể — nơi người dùng THỰC SỰ đi vào sau khi chọn lớp từ /lop-hoc.
+const CLASS_FEATURE_TABS = [
+  { label: 'Điểm danh', segment: 'diem-danh' },
+  { label: 'Vi phạm & điểm cộng', segment: 'vi-pham' },
+  { label: 'Xếp loại rèn luyện', segment: 'xep-loai' },
+  { label: 'Chép phạt', segment: 'chep-phat' },
+  { label: 'Bảng điều khiển', segment: 'bang-dieu-khien' },
+];
 
 // HOMEROOM không có subject (chỉ 1 vị trí/lớp) nên hiện nhãn cố định "Chủ nhiệm"; SUBJECT hiện thẳng tên môn
 // đã lưu ở backend (vd "Toán"), không có bảng tra cứu riêng nào khác cần gọi thêm.
@@ -89,6 +99,18 @@ export default function ClassDetailPage({ params }) {
     <div className="p-6">
       <h1 className="font-heading text-2xl font-semibold">{klass.name}</h1>
       <p className="text-fg-muted">{klass.code}</p>
+
+      <nav className="mt-4 flex flex-wrap gap-2 border-b border-border pb-3">
+        {CLASS_FEATURE_TABS.map(({ label, segment }) => (
+          <Link
+            key={segment}
+            href={`/lop-hoc/${classId}/${segment}`}
+            className="rounded-md px-3 py-1.5 text-sm text-fg-muted hover:bg-black/5 hover:text-fg"
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
 
       <ul className="mt-4 flex flex-col gap-2">
         {positions.map((position) => (

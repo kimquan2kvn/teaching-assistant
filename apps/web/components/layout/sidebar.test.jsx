@@ -67,3 +67,18 @@ test('mục "Lớp học" và "Học sinh" ẨN với role STUDENT', () => {
   expect(screen.queryByText('Lớp học')).not.toBeInTheDocument();
   expect(screen.queryByText('Học sinh')).not.toBeInTheDocument();
 });
+
+test('mục "Điểm danh"/"Vi phạm & điểm cộng" và 3 mục mới (Xếp loại rèn luyện/Chép phạt/Danh mục vi phạm) ẨN với role STUDENT', () => {
+  renderWithRole('STUDENT');
+  ['Điểm danh', 'Vi phạm & điểm cộng', 'Xếp loại rèn luyện', 'Chép phạt', 'Danh mục vi phạm'].forEach((label) => {
+    expect(screen.queryByText(label)).not.toBeInTheDocument();
+  });
+});
+
+test('mục "Danh mục vi phạm" (roles=["ADMIN"]) ẨN với role TEACHER dù các mục TEACHER khác trong nhóm vẫn hiện', () => {
+  renderWithRole('TEACHER');
+  expect(screen.queryByText('Danh mục vi phạm')).not.toBeInTheDocument();
+  ['Điểm danh', 'Vi phạm & điểm cộng', 'Xếp loại rèn luyện', 'Chép phạt'].forEach((label) => {
+    expect(screen.getByText(label)).toBeInTheDocument();
+  });
+});

@@ -10,8 +10,17 @@ jest.mock('next/navigation', () => ({ usePathname: () => '/' }));
 // MobileNav render Sidebar bên trong, mà Sidebar giờ đọc user hiện tại qua useSelector(selectCurrentUser)
 // (Task 7) nên mọi render đều cần bọc Provider Redux — nếu không, useSelector sẽ throw "could not find
 // react-redux context value". Nội dung/assertion của các test giữ nguyên không đổi.
+//
+// Bước 7 (phase2-ui) gate toàn bộ nhóm "Lớp học hằng ngày" theo roles: ['TEACHER', 'ADMIN'] (trước đó 2 mục
+// "Điểm danh"/"Vi phạm & điểm cộng" không có role nào) — user mặc định (role=null) giờ làm cả nhóm rỗng và biến
+// mất hẳn (xem sidebar.jsx: lọc group rỗng), đúng lớp bug mobile-nav đã từng gặp khi "Lớp học"/"Học sinh" bị
+// gate. Preload sẵn role TEACHER (đủ thấy mọi mục trừ "Danh mục vi phạm" chỉ ADMIN mới thấy — không mục nào test
+// bên dưới cần tới) để giữ nguyên ý nghĩa test, không đổi gì khác.
 function renderMobileNav() {
-  const store = configureStore({ reducer: { auth: authReducer } });
+  const store = configureStore({
+    reducer: { auth: authReducer },
+    preloadedState: { auth: { user: { id: '1', role: 'TEACHER' }, accessToken: 'x' } },
+  });
   return render(
     <Provider store={store}>
       <MobileNav />

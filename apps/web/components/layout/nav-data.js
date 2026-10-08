@@ -10,6 +10,9 @@ import {
   ListChecks,
   Settings,
   UserCog,
+  Award,
+  FileText,
+  Tags,
 } from 'lucide-react';
 
 export const NAV_GROUPS = [
@@ -34,8 +37,10 @@ export const NAV_GROUPS = [
   {
     group: 'Lớp học hằng ngày',
     items: [
-      { label: 'Điểm danh', href: '/dang-phat-trien', icon: ClipboardCheck },
-      { label: 'Vi phạm & điểm cộng', href: '/dang-phat-trien', icon: AlertTriangle },
+      { label: 'Điểm danh', href: '/lop-hoc', icon: ClipboardCheck, roles: ['TEACHER', 'ADMIN'] },
+      { label: 'Vi phạm & điểm cộng', href: '/lop-hoc', icon: AlertTriangle, roles: ['TEACHER', 'ADMIN'] },
+      { label: 'Xếp loại rèn luyện', href: '/lop-hoc', icon: Award, roles: ['TEACHER', 'ADMIN'] },
+      { label: 'Chép phạt', href: '/lop-hoc', icon: FileText, roles: ['TEACHER', 'ADMIN'] },
     ],
   },
   {
@@ -50,6 +55,7 @@ export const NAV_GROUPS = [
     items: [
       { label: 'Cài đặt', href: '/dang-phat-trien', icon: Settings },
       { label: 'Quản lý giáo viên', href: '/quan-ly-giao-vien', icon: UserCog, roles: ['ADMIN'] },
+      { label: 'Danh mục vi phạm', href: '/danh-muc-vi-pham', icon: Tags, roles: ['ADMIN'] },
     ],
   },
 ];

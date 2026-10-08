@@ -150,6 +150,43 @@ test('query trả lỗi 403 hiện đúng copy "không có quyền", không hi�
   expect(screen.queryByText('Trống')).not.toBeInTheDocument();
 });
 
+test('hiện dải tab trỏ sang 5 trang con Phase 2 với đúng href', () => {
+  getClassDetailQueryMock.mockReturnValue({
+    data: {
+      class: { id: 'class-1', code: 'ABC123', name: 'Lớp 10A1' },
+      positions: [
+        { id: 'pos-1', type: 'HOMEROOM', subject: null, holder: { id: 'teacher-1', fullName: 'Nguyễn Văn A' } },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+    error: undefined,
+  });
+
+  renderPage({ classId: 'class-1' });
+
+  expect(screen.getByRole('link', { name: 'Điểm danh' })).toHaveAttribute(
+    'href',
+    '/lop-hoc/class-1/diem-danh',
+  );
+  expect(screen.getByRole('link', { name: 'Vi phạm & điểm cộng' })).toHaveAttribute(
+    'href',
+    '/lop-hoc/class-1/vi-pham',
+  );
+  expect(screen.getByRole('link', { name: 'Xếp loại rèn luyện' })).toHaveAttribute(
+    'href',
+    '/lop-hoc/class-1/xep-loai',
+  );
+  expect(screen.getByRole('link', { name: 'Chép phạt' })).toHaveAttribute(
+    'href',
+    '/lop-hoc/class-1/chep-phat',
+  );
+  expect(screen.getByRole('link', { name: 'Bảng điều khiển' })).toHaveAttribute(
+    'href',
+    '/lop-hoc/class-1/bang-dieu-khien',
+  );
+});
+
 test('query trả lỗi 404 hiện "Không tìm thấy lớp"', () => {
   getClassDetailQueryMock.mockReturnValue({
     data: undefined,
