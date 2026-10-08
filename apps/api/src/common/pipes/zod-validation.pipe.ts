@@ -18,6 +18,10 @@ function translateIssue(issue: ZodIssue): string {
       return `${field}: giá trị không hợp lệ`;
     case 'invalid_date':
       return `${field}: ngày không hợp lệ`;
+    case 'custom':
+      // Message tuỳ chỉnh từ .refine()/.superRefine() trong schema — giữ nguyên văn,
+      // không thay bằng "<field>: không hợp lệ" (xem Bước 0, docs/superpowers/plans/2026-10-08-phase2-ui.md).
+      return issue.message;
     default:
       return `${field}: không hợp lệ`;
   }
