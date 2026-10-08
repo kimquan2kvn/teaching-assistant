@@ -4,6 +4,8 @@ import { Model, Types } from 'mongoose';
 import { setTeacherActiveSchema } from '@so-chu-nhiem/shared';
 import type { SetTeacherActiveInput } from '@so-chu-nhiem/shared';
 import { User } from '../database/schemas/user.schema';
+import { Position } from '../database/schemas/position.schema';
+import { Class } from '../database/schemas/class.schema';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -13,7 +15,10 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
 export class AdminController {
-  constructor(@InjectModel(User.name) private readonly userModel: Model<User>) {}
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<User>,
+    @InjectModel(Position.name) private readonly positionModel: Model<Position>,
+  ) {}
 
   @Get('teachers')
   async listTeachers() {
@@ -41,5 +46,27 @@ export class AdminController {
       throw new NotFoundException('Không tìm thấy giáo viên với mã này');
     }
     return { success: true };
+  }
+
+  @Get('teachers/:id/positions')
+  async listTeacherPositions(@Param('id') id: string) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Mã giáo viên không hợp lệ');
+    }
+    const positions = await this.positionModel
+      .find({ holderId: id })
+      .populate<{ classId: Class }>('classId', 'code name')
+      .exec();
+
+    return positions.map((p) => ({
+      id: String(p._id),
+      type: p.type,
+      subject: p.subject,
+      class: {
+        id: String(p.classId._id),
+        code: p.classId.code,
+        name: p.classId.name,
+      },
+    }));
   }
 }

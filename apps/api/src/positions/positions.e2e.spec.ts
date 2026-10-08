@@ -218,7 +218,12 @@ describe('Positions (e2e)', () => {
         .expect(200);
 
       expect(res.body).toHaveLength(2);
-      const byClassCode = Object.fromEntries(res.body.map((p: any) => [p.class.code, p]));
+      const positions = res.body as Array<{
+        type: string;
+        subject?: string;
+        class: { code: string; name: string };
+      }>;
+      const byClassCode = Object.fromEntries(positions.map((p) => [p.class.code, p]));
       expect(byClassCode[code1]).toMatchObject({
         type: 'HOMEROOM',
         class: { code: code1, name: '10B1' },
