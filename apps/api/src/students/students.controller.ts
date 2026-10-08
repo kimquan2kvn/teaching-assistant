@@ -1,6 +1,17 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { createStudentSchema, updateStudentSchema, markTransferredSchema } from '@so-chu-nhiem/shared';
-import type { CreateStudentInput, UpdateStudentInput, MarkTransferredInput } from '@so-chu-nhiem/shared';
+import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  createStudentSchema,
+  updateStudentSchema,
+  markTransferredSchema,
+  importConfirmSchema,
+} from '@so-chu-nhiem/shared';
+import type {
+  CreateStudentInput,
+  UpdateStudentInput,
+  MarkTransferredInput,
+  ImportConfirmInput,
+} from '@so-chu-nhiem/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -46,5 +57,22 @@ export class StudentsController {
     @Body(new ZodValidationPipe(markTransferredSchema)) body: MarkTransferredInput,
   ) {
     return this.studentsService.transfer(classId, studentId, body);
+  }
+
+  @Post('import-preview')
+  @RequirePosition('HOMEROOM')
+  @UseInterceptors(FileInterceptor('file'))
+  async importPreview(@UploadedFile() file: Express.Multer.File) {
+    const rows = await this.studentsService.parsePreview(file.buffer);
+    return { rows };
+  }
+
+  @Post('import-confirm')
+  @RequirePosition('HOMEROOM')
+  async importConfirm(
+    @Param('classId') classId: string,
+    @Body(new ZodValidationPipe(importConfirmSchema)) body: ImportConfirmInput,
+  ) {
+    return this.studentsService.bulkCreate(classId, body.rows);
   }
 }

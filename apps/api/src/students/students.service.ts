@@ -1,8 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import ExcelJS from 'exceljs';
 import { Student } from '../database/schemas/student.schema';
 import type { CreateStudentInput, UpdateStudentInput, MarkTransferredInput } from '@so-chu-nhiem/shared';
+
+export interface ImportPreviewRow {
+  rowNumber: number;
+  fullName: string;
+  dob?: Date;
+  errors: string[];
+}
 
 @Injectable()
 export class StudentsService {
@@ -33,6 +41,32 @@ export class StudentsService {
     student.transferReason = input.transferReason;
     await student.save();
     return student;
+  }
+
+  async parsePreview(buffer: Buffer): Promise<ImportPreviewRow[]> {
+    const workbook = new ExcelJS.Workbook();
+    // exceljs' bundled type defs predate the current @types/node Buffer<ArrayBufferLike> generic.
+    await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    const sheet = workbook.worksheets[0];
+    const rows: ImportPreviewRow[] = [];
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const fullName = String(row.getCell(1).text ?? '').trim();
+      const dobRaw = String(row.getCell(2).text ?? '').trim();
+      const errors: string[] = [];
+      if (!fullName) errors.push('Họ và tên không được để trống');
+      rows.push({ rowNumber, fullName, dob: dobRaw ? new Date(dobRaw) : undefined, errors });
+    });
+    return rows;
+  }
+
+  async bulkCreate(classId: string, rows: Array<{ fullName: string; dob?: Date }>): Promise<Student[]> {
+    const invalidIndex = rows.findIndex((r) => !r.fullName?.trim());
+    if (invalidIndex !== -1) {
+      throw new BadRequestException(`Dòng thứ ${invalidIndex + 1} thiếu họ và tên, không lưu được`);
+    }
+    const docs = rows.map((r) => ({ classId, fullName: r.fullName, dob: r.dob }));
+    return this.studentModel.insertMany(docs, { ordered: true });
   }
 
   // GVCN chỉ được đọc/sửa classId của đúng lớp họ đang giữ HOMEROOM (đã kiểm tra ở PositionGuard theo
