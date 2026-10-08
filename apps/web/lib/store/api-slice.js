@@ -45,7 +45,20 @@ async function baseQueryWithReauth(args, api, extraOptions) {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['MyPositions', 'ClassDetail', 'Students', 'Teachers', 'TeacherPositions'],
+  tagTypes: [
+    'MyPositions',
+    'ClassDetail',
+    'Students',
+    'Teachers',
+    'TeacherPositions',
+    'PositionAttendance',
+    'ClassAttendanceSummary',
+    'ConductCatalog',
+    'ConductLogs',
+    'ConductRating',
+    'Punishments',
+    'Dashboard',
+  ],
   endpoints: (builder) => ({
     login: builder.mutation({ query: (body) => ({ url: '/auth/login', method: 'POST', body }) }),
     register: builder.mutation({ query: (body) => ({ url: '/auth/register', method: 'POST', body }) }),

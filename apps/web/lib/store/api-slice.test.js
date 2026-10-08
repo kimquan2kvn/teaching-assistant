@@ -96,3 +96,43 @@ test('refresh thất bại thì xoá luôn cache RTK Query, không giữ dữ li
 
   expect(apiSlice.endpoints.me.select()(store.getState()).data).toBeUndefined();
 });
+
+test('tagTypes có đủ các tag Phase 2 (điểm danh, vi phạm, xếp loại, chép phạt, dashboard) cho Bước 2-6 dùng', async () => {
+  // RTK Query tự console.error "Tag type 'X' was used, but not specified in `tagTypes`!" (dev build) nếu 1
+  // endpoint dùng providesTags với tag CHƯA khai báo — dùng chính cơ chế này để chứng minh tagTypes mới đã
+  // đăng ký đúng, thay vì chỉ đoán theo tên biến.
+  const newTagTypes = [
+    'PositionAttendance',
+    'ClassAttendanceSummary',
+    'ConductCatalog',
+    'ConductLogs',
+    'ConductRating',
+    'Punishments',
+    'Dashboard',
+  ];
+  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  global.fetch = jest.fn().mockReturnValue(
+    Promise.resolve({
+      status: 200,
+      text: () => Promise.resolve('{}'),
+      clone() {
+        return { text: () => Promise.resolve('{}') };
+      },
+    }),
+  );
+  const probeApi = apiSlice.injectEndpoints({
+    endpoints: (builder) => ({
+      __probePhase2Tags: builder.query({
+        query: () => '/__probe',
+        providesTags: newTagTypes.map((type) => ({ type, id: 'LIST' })),
+      }),
+    }),
+    overrideExisting: true,
+  });
+  const store = makeStore();
+  await store.dispatch(probeApi.endpoints.__probePhase2Tags.initiate());
+  for (const type of newTagTypes) {
+    expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining(`Tag type '${type}' was used`));
+  }
+  errorSpy.mockRestore();
+});
