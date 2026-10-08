@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #f0b90b;
+  --brand-hover: #d0980b;
+  --sidebar-bg: #1e2329;
+  --sidebar-fg: #b7bdc6;
+  --sidebar-active-fg: #f0b90b;
+  --border: #eaecef;
+  --fg: #1e2329;
+  --fg-muted: #848e9c;
+  --success: #0ecb81;
+  --danger: #f6465d;
+}
+
+body {
+  @apply bg-white text-fg font-sans;
+}
