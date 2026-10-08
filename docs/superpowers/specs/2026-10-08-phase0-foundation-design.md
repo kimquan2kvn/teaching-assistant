@@ -78,7 +78,11 @@ teaching_assistant/
   - `--sidebar-bg: #1E2329`, `--sidebar-fg: #B7BDC6`, `--sidebar-active-fg: #F0B90B`
   - `--border: #EAECEF`, `--fg: #1E2329`, `--fg-muted: #848E9C`
   - `--success: #0ECB81` (có mặt/điểm cộng), `--danger: #F6465D` (vi phạm/vắng)
-- shadcn/ui: cài qua CLI, theme map vào các CSS variables trên (không tự tạo biến mới ngoài hệ thống shadcn).
+- shadcn/ui: Phase 0 chỉ cần 3 primitive (`Button`, `Sheet`, `Input`) — tự viết tay theo đúng pattern nguồn mở của
+  shadcn (Radix UI primitives + `class-variance-authority` + `clsx`/`tailwind-merge`) thay vì chạy CLI tương tác,
+  để plan xác định được chính xác file/props mà không phụ thuộc mạng lúc build. Theme map vào CSS variables ở
+  trên (không tự tạo biến mới ngoài hệ thống shadcn). Phase sau cần thêm component nào thì thêm bằng CLI
+  (`npx shadcn@latest add <name>`) bình thường.
 - Font: `next/font` — Inter (thân), IBM Plex Sans (tiêu đề), IBM Plex Mono (số liệu).
 - Layout gốc `app/layout.jsx`: sidebar trái cố định trên desktop (thu thành `Sheet`/drawer của shadcn trên mobile),
   6 nhóm mục điều hướng (Tổng quan / Nền tảng / Kế hoạch dạy học / Lớp học hằng ngày / Học tập / Khác) — Phase 0
@@ -108,17 +112,24 @@ teaching_assistant/
 ### CI (GitHub Actions)
 
 - Trigger: `push` và `pull_request` vào `main`.
-- Job `build`: setup Node 20 + pnpm (cache), `pnpm install --frozen-lockfile`, `pnpm -r lint`, `pnpm -r build`.
-- Chưa chạy `pnpm -r test` ở Phase 0 (chưa có test nghiệp vụ nào — test suite thật bắt đầu từ Phase 1 với
-  mongodb-memory-server replica set).
+- Job `build`: setup Node 20 + pnpm qua corepack (cache pnpm store), `pnpm install --frozen-lockfile`,
+  `pnpm -r run lint`, `pnpm -r run build`, `pnpm -r run test` (chạy các test nhẹ không-nghiệp-vụ mô tả bên dưới —
+  không cần Mongo thật nên không cần service container Mongo trong CI ở Phase 0).
+- Môi trường dev hiện tại (sandbox) có Node mặc định là 18.x qua nvm; phải `nvm use 20` (hoặc để shell tự đọc
+  `.nvmrc`) trước khi chạy `pnpm` — Node 18 gặp lỗi corepack/pnpm trong môi trường này.
 
 ## Kiểm thử (Phase 0)
 
+Chưa có nghiệp vụ nên chưa cần test nghiệp vụ (engine khớp tiết, tính điểm...) — các test dưới đây chỉ là
+smoke test xác nhận khung chạy được, không thay thế test nghiệp vụ thật sẽ viết từ Phase 1:
 - `apps/api`: 1 e2e test nhỏ xác nhận `GET /health` trả 200 (dùng Nest `TestingModule`, không cần Mongo thật —
   mock kết nối hoặc test riêng phần không phụ thuộc DB).
-- `apps/web`: không cần Playwright ở Phase 0 (chưa có luồng nghiệp vụ để test theo đúng yêu cầu gốc "Playwright
-  cho vài luồng chính" — luồng chính bắt đầu từ Phase 1 đăng nhập).
-- Lint: ESLint cấu hình chung cho cả 3 package (có thể khác rule nhẹ giữa TS và JS).
+- `apps/web`: 1 test Jest + React Testing Library xác nhận layout render đủ 6 nhóm điều hướng và ô tìm kiếm có
+  icon kính lúp — không cần Playwright ở Phase 0 (chưa có luồng nghiệp vụ để test theo đúng yêu cầu gốc
+  "Playwright cho vài luồng chính" — luồng chính bắt đầu từ Phase 1 đăng nhập).
+- `packages/shared`: 1 test Jest xác nhận `APP_NAME` export đúng giá trị và build `tsc` ra `dist/` thành công.
+- Lint: ESLint cấu hình riêng mỗi package (TS cho api/shared, `eslint-config-next` cho web) vì rule TS và JS khác
+  nhau đáng kể, nhưng dùng chung Prettier config ở root.
 
 ## Rủi ro / điểm cần lưu ý
 
