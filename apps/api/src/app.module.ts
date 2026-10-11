@@ -16,6 +16,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { LessonLogsModule } from './lesson-logs/lesson-logs.module';
 import { HolidaysModule } from './holidays/holidays.module';
 import { TimetableSlotsModule } from './timetable-slots/timetable-slots.module';
+import { PpctModule } from './ppct/ppct.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { TimetableSlotsModule } from './timetable-slots/timetable-slots.module';
     LessonLogsModule,
     HolidaysModule,
     TimetableSlotsModule,
+    PpctModule,
   ],
 })
 export class AppModule {}
