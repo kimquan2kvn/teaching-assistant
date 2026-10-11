@@ -14,6 +14,7 @@ import { SchoolConfigModule } from './school-config/school-config.module';
 import { PunishmentsModule } from './punishments/punishments.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { LessonLogsModule } from './lesson-logs/lesson-logs.module';
+import { HolidaysModule } from './holidays/holidays.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { LessonLogsModule } from './lesson-logs/lesson-logs.module';
     PunishmentsModule,
     DashboardModule,
     LessonLogsModule,
+    HolidaysModule,
   ],
 })
 export class AppModule {}
