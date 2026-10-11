@@ -2,9 +2,16 @@ import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { Sidebar } from './sidebar';
+import { NAV_GROUPS } from './nav-data';
 import authReducer from '@/lib/store/auth-slice';
 
-jest.mock('next/navigation', () => ({ usePathname: () => '/' }));
+// Tên biến phải bắt đầu bằng "mock" thì jest.mock (được hoist lên đầu file) mới cho phép factory tham chiếu.
+let mockPathname = '/';
+jest.mock('next/navigation', () => ({ usePathname: () => mockPathname }));
+
+beforeEach(() => {
+  mockPathname = '/';
+});
 
 // Sidebar giờ đọc user hiện tại qua useSelector(selectCurrentUser) (Task 7) nên mọi render
 // đều cần bọc Provider Redux, kể cả 3 test có sẵn bên dưới — nếu không, useSelector sẽ throw
@@ -81,4 +88,59 @@ test('mục "Danh mục vi phạm" (roles=["ADMIN"]) ẨN với role TEACHER dù
   ['Điểm danh', 'Vi phạm & điểm cộng', 'Xếp loại rèn luyện', 'Chép phạt'].forEach((label) => {
     expect(screen.getByText(label)).toBeInTheDocument();
   });
+});
+
+// 4 mục nhóm "Kế hoạch dạy học" của Phase 3. Test điều hướng chỉ khẳng định href/quyền hiển thị, không render trang đích.
+const PHASE3_NAV = [
+  { label: 'Lịch năm học', href: '/lich-nam-hoc' },
+  { label: 'Phân phối chương trình', href: '/phan-phoi-chuong-trinh' },
+  { label: 'Thời khóa biểu', href: '/thoi-khoa-bieu' },
+  { label: 'Sổ báo giảng', href: '/so-bao-giang' },
+];
+
+test('TEACHER thấy đủ 4 mục kế hoạch dạy học, mỗi mục trỏ đúng trang Phase 3 và có icon SVG', () => {
+  renderWithRole('TEACHER');
+  PHASE3_NAV.forEach(({ label, href }) => {
+    const link = screen.getByRole('link', { name: label });
+    expect(link).toHaveAttribute('href', href);
+    expect(link.querySelector('svg')).not.toBeNull();
+  });
+});
+
+test('ADMIN thấy "Lịch năm học" và "Phân phối chương trình" nhưng KHÔNG thấy "Thời khóa biểu", "Sổ báo giảng" (chỉ-giáo-viên)', () => {
+  renderWithRole('ADMIN');
+  expect(screen.getByRole('link', { name: 'Lịch năm học' })).toHaveAttribute('href', '/lich-nam-hoc');
+  expect(screen.getByRole('link', { name: 'Phân phối chương trình' })).toHaveAttribute(
+    'href',
+    '/phan-phoi-chuong-trinh',
+  );
+  expect(screen.queryByRole('link', { name: 'Thời khóa biểu' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Sổ báo giảng' })).not.toBeInTheDocument();
+});
+
+test('STUDENT không thấy mục nào trong 4 mục kế hoạch dạy học', () => {
+  renderWithRole('STUDENT');
+  PHASE3_NAV.forEach(({ label }) => {
+    expect(screen.queryByText(label)).not.toBeInTheDocument();
+  });
+});
+
+test('4 mục kế hoạch dạy học có href khác nhau và không trùng /lop-hoc (tránh nhiều mục cùng sáng active)', () => {
+  const items = NAV_GROUPS.flatMap((group) => group.items);
+  const hrefs = PHASE3_NAV.map(({ label }) => items.find((item) => item.label === label)?.href);
+
+  expect(hrefs).toEqual(PHASE3_NAV.map(({ href }) => href));
+  expect(new Set(hrefs).size).toBe(PHASE3_NAV.length);
+  expect(hrefs).not.toContain('/lop-hoc');
+});
+
+test('đang ở /thoi-khoa-bieu thì chỉ đúng mục "Thời khóa biểu" sáng active', () => {
+  mockPathname = '/thoi-khoa-bieu';
+  renderWithRole('TEACHER');
+
+  const activeLabels = screen
+    .getAllByRole('link')
+    .filter((link) => link.classList.contains('text-sidebar-active-fg'))
+    .map((link) => link.textContent);
+  expect(activeLabels).toEqual(['Thời khóa biểu']);
 });
