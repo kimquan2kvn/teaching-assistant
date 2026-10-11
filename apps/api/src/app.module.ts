@@ -13,6 +13,7 @@ import { ConductLogModule } from './conduct-log/conduct-log.module';
 import { SchoolConfigModule } from './school-config/school-config.module';
 import { PunishmentsModule } from './punishments/punishments.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { LessonLogsModule } from './lesson-logs/lesson-logs.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     SchoolConfigModule,
     PunishmentsModule,
     DashboardModule,
+    LessonLogsModule,
   ],
 })
 export class AppModule {}
