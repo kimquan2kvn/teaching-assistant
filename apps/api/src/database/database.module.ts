@@ -11,6 +11,10 @@ import { ConductCatalogItem, ConductCatalogItemSchema } from './schemas/conduct-
 import { ConductLog, ConductLogSchema } from './schemas/conduct-log.schema';
 import { SchoolConfig, SchoolConfigSchema } from './schemas/school-config.schema';
 import { Punishment, PunishmentSchema } from './schemas/punishment.schema';
+import { Holiday, HolidaySchema } from './schemas/holiday.schema';
+import { TimetableSlot, TimetableSlotSchema } from './schemas/timetable-slot.schema';
+import { PpctItem, PpctItemSchema } from './schemas/ppct-item.schema';
+import { LessonLog, LessonLogSchema } from './schemas/lesson-log.schema';
 
 @Module({
   imports: [
@@ -30,6 +34,10 @@ import { Punishment, PunishmentSchema } from './schemas/punishment.schema';
       { name: ConductLog.name, schema: ConductLogSchema },
       { name: SchoolConfig.name, schema: SchoolConfigSchema },
       { name: Punishment.name, schema: PunishmentSchema },
+      { name: Holiday.name, schema: HolidaySchema },
+      { name: TimetableSlot.name, schema: TimetableSlotSchema },
+      { name: PpctItem.name, schema: PpctItemSchema },
+      { name: LessonLog.name, schema: LessonLogSchema },
     ]),
   ],
   exports: [MongooseModule],

@@ -11,6 +11,10 @@ export class SchoolConfig extends Document {
 
   @Prop({ required: true, default: 20 })
   defaultWeeklyPunishmentLines: number;
+
+  // Chỉ dùng cho thẻ thống kê ngày dạy còn lại; engine khớp tiết không đọc cờ này.
+  @Prop({ default: false })
+  saturdayIsSchoolDay: boolean;
 }
 
 export const SchoolConfigSchema = SchemaFactory.createForClass(SchoolConfig);
