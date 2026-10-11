@@ -22,7 +22,8 @@ export interface SchedulePpctItem {
 export interface KeptLog {
   ppctItemId: string;
   date: Date;
-  // Log bị khóa (isManuallyAdjusted/done). Mặc định true; chỉ log được giữ vì date < fromDate mà chưa khóa mới truyền false.
+  // Log bị khóa (isManuallyAdjusted/done). Mặc định true; chỉ log chưa khóa mà vẫn được giữ (date < fromDate, hoặc
+  // keepAllLogs của engine service) mới truyền false.
   locked?: boolean;
 }
 export interface ScheduleInput {
@@ -67,8 +68,9 @@ export function buildCells(args: { slots: ScheduleSlot[]; holidays: ScheduleHoli
 // LessonLog không lưu tiết (chỉ có date) nên ô bị log chiếm được suy ra từ date: lấy `periodCount` ô tự do đầu tiên có
 // date >= log.date, theo thứ tự (date, order của mục) — log cùng ngày chiếm lần lượt các tiết của ngày đó.
 // Log khóa nằm trên ngày không còn ô (vd vừa thành ngày nghỉ) tự trôi sang ô tự do kế tiếp; `date` đã lưu không bị sửa.
-// Log không khóa (`locked: false`, chỉ được giữ vì date < fromDate) do chính engine xếp nên ngày của nó luôn có ô; nếu
-// không còn (TKB bị đổi ngoài luồng) thì nó không chiếm ô nào, để không trôi sang đẩy log khác vào các ô sau fromDate.
+// Log không khóa (`locked: false`, chỉ được giữ vì date < fromDate hoặc keepAllLogs) do chính engine xếp nên ngày của nó
+// luôn có ô; nếu không còn (TKB bị đổi ngoài luồng) thì nó không chiếm ô nào, để không trôi sang đẩy log khác vào các ô
+// sau fromDate.
 export function reserveKeptLogs(
   cells: Cell[],
   keptLogs: KeptLog[],

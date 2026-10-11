@@ -1,16 +1,11 @@
 import { NestFactory } from '@nestjs/core';
-import cookieParser from 'cookie-parser';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
-import { MongoExceptionFilter } from './common/filters/mongo-exception.filter';
+import { APP_OPTIONS, configureApp } from './configure-app';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.use(cookieParser());
-  app.useGlobalFilters(new MongoExceptionFilter());
-  app.enableCors({
-    origin: process.env.CORS_ORIGINS?.split(',') ?? 'http://localhost:3000',
-    credentials: true,
-  });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, APP_OPTIONS);
+  configureApp(app);
   await app.listen(process.env.PORT ?? 3001);
 }
 bootstrap();

@@ -1,6 +1,21 @@
-import { ArgumentsHost, BadRequestException, Catch, ConflictException, ExceptionFilter, HttpException } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  BadRequestException,
+  Catch,
+  ConflictException,
+  ExceptionFilter,
+  HttpException,
+  PayloadTooLargeException,
+} from '@nestjs/common';
 import { Response } from 'express';
 import { Error as MongooseError } from 'mongoose';
+
+// body-parser ném lỗi này (qua http-errors) khi body vượt giới hạn; nó không phải HttpException nên không được nhánh
+// đầu tiên của filter giữ lại.
+function isPayloadTooLargeError(exception: unknown): boolean {
+  const error = exception as { type?: unknown; status?: unknown; statusCode?: unknown } | null;
+  return error?.type === 'entity.too.large' || error?.status === 413 || error?.statusCode === 413;
+}
 
 // Bắt mọi lỗi KHÔNG phải HttpException (đã được service/controller chủ động throw với message tiếng Việt) —
 // chủ yếu là lỗi Mongoose/MongoDB lọt qua service mà không được validate trước (vd 1 ObjectId không hợp lệ
@@ -31,6 +46,12 @@ export class MongoExceptionFilter implements ExceptionFilter {
 
     if ((exception as { code?: number } | null)?.code === 11000) {
       const mapped = new ConflictException('Dữ liệu đã tồn tại, không thể ghi trùng');
+      response.status(mapped.getStatus()).json(mapped.getResponse());
+      return;
+    }
+
+    if (isPayloadTooLargeError(exception)) {
+      const mapped = new PayloadTooLargeException('Dữ liệu gửi lên quá lớn, vui lòng giảm bớt rồi thử lại');
       response.status(mapped.getStatus()).json(mapped.getResponse());
       return;
     }

@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthController } from '../src/auth/auth.controller';
@@ -10,10 +11,10 @@ import { AuthService } from '../src/auth/auth.service';
 import { JwtStrategy } from '../src/auth/jwt.strategy';
 import { ClassesController } from '../src/classes/classes.controller';
 import { ClassesService } from '../src/classes/classes.service';
-import { MongoExceptionFilter } from '../src/common/filters/mongo-exception.filter';
 import { PositionGuard } from '../src/common/guards/position.guard';
 import { PositionOwnerGuard } from '../src/common/guards/position-owner.guard';
 import { Clock } from '../src/common/utils/clock';
+import { APP_OPTIONS, configureApp } from '../src/configure-app';
 import { PositionsController } from '../src/positions/positions.controller';
 import { PositionsService } from '../src/positions/positions.service';
 import { SchoolConfigService } from '../src/school-config/school-config.service';
@@ -93,9 +94,10 @@ export async function createPhase3App(options: Phase3AppOptions): Promise<Phase3
     ],
   }).compile();
 
-  const app = moduleRef.createNestApplication();
-  // Giống main.ts: lỗi Mongo lọt ra (E11000, CastError) được map thành 409/400 thay vì 500 mặc định.
-  app.useGlobalFilters(new MongoExceptionFilter());
+  const app = moduleRef.createNestApplication<NestExpressApplication>(APP_OPTIONS);
+  // Đúng cấu hình của main.ts (CORS, cookie, giới hạn body, MongoExceptionFilter): lỗi Mongo lọt ra được map thành
+  // 409/400, body quá lớn thành 413 thay vì 500 mặc định.
+  configureApp(app);
   await app.init();
 
   const models = getPhase3Models(moduleRef);

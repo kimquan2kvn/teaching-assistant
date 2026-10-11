@@ -181,6 +181,27 @@ describe('LessonLogEngineService (e2e)', () => {
     expect(await models.lessonLog.countDocuments({ positionId })).toBe(5);
   });
 
+  it('(o) keepAllLogs: không xếp lại/xóa log nào dù chưa khóa và nằm sau fromDate, chỉ xếp mục chưa có log vào ô tự do', async () => {
+    const { positionId, itemIds } = await arrange({ count: 4 });
+    await service.recalculate(positionId, YEAR_START);
+    const idsBefore = await logIdsOf(itemIds);
+    await models.timetableSlot.deleteOne({ positionId, dayOfWeek: 5 }); // bỏ Thứ Năm: ô 01-08 và 01-15 biến mất
+    const fifthId = await addPpctItem(positionId, 5);
+
+    const result = await service.recalculate(positionId, d('2026-01-08'), undefined, { keepAllLogs: true });
+
+    // Không có keepAllLogs thì cả mục 2, 3, 4 (log từ 01-08 trở đi) bị xếp lại sang các Thứ Hai 01-12, 01-19, 01-26.
+    expect(result).toEqual({ scheduled: 1 });
+    expect(await datesOf([...itemIds, fifthId])).toEqual([
+      '2026-01-05',
+      '2026-01-08',
+      '2026-01-12',
+      '2026-01-15',
+      '2026-01-19',
+    ]);
+    expect(await logIdsOf(itemIds)).toEqual(idsBefore);
+  });
+
   describe('(m) bài nhiều tiết bắt đầu trước fromDate vẫn giữ các ô sau fromDate', () => {
     // Bài 2 chiếm 2 ô (01-08 và 01-12): ngày hôm nay/fromDate rơi vào giữa 2 ô đó là chỗ engine dễ làm mất tiết thứ 2.
     async function arrangeMultiPeriod() {
@@ -291,6 +312,83 @@ describe('LessonLogEngineService (e2e)', () => {
       // Nếu nhầm "hôm nay" = 2026-01-15 (theo UTC) thì mục 4 bị dời sang 01-19 và scheduled = 2.
       expect(result).toEqual({ scheduled: 1 });
       expect(await datesOf(itemIds)).toEqual(['2026-01-05', '2026-01-08', '2026-01-12', '2026-01-15', '2026-01-19']);
+    });
+
+    describe('thêm mục PPCT (appendedItems)', () => {
+      const APPENDED = { appendedItems: true };
+
+      it('mọi log đã ở quá khứ: mục mới vào ô trống ngay sau log cuối thay vì nhảy tới hôm nay; log cũ giữ nguyên _id/ngày', async () => {
+        const { positionId, itemIds } = await arrange({ count: 3 });
+        await service.recalculate(positionId, YEAR_START);
+        const fourthId = await addPpctItem(positionId, 4);
+        const idsBefore = await logIdsOf(itemIds);
+        clock.set('2026-01-20T03:00:00Z'); // 01-15 và 01-19 đã qua nhưng chưa có buổi nào
+
+        const result = await service.recalculateWithDefaultFrom(positionId, undefined, APPENDED);
+
+        // Chỉ mục mới được xếp: 3 log cũ được giữ nguyên, không bị xếp lại.
+        expect(result).toEqual({ scheduled: 1 });
+        expect(await datesOf([...itemIds, fourthId])).toEqual(['2026-01-05', '2026-01-08', '2026-01-12', '2026-01-15']);
+        expect(await logIdsOf(itemIds)).toEqual(idsBefore);
+      });
+
+      it('cùng trạng thái nhưng sửa/xóa mục hoặc ADMIN tính lại (không appendedItems): vẫn từ hôm nay', async () => {
+        const { positionId, itemIds } = await arrange({ count: 3 });
+        await service.recalculate(positionId, YEAR_START);
+        const fourthId = await addPpctItem(positionId, 4);
+        clock.set('2026-01-20T03:00:00Z');
+
+        const result = await service.recalculateWithDefaultFrom(positionId);
+
+        expect(result).toEqual({ scheduled: 1 });
+        expect(await datesOf([...itemIds, fourthId])).toEqual(['2026-01-05', '2026-01-08', '2026-01-12', '2026-01-22']);
+      });
+
+      it('lịch đã kéo tới hôm nay hoặc sau đó: giống mặc định, tính từ hôm nay', async () => {
+        const { positionId, itemIds } = await arrange({ count: 5 });
+        await service.recalculate(positionId, YEAR_START);
+        const sixthId = await addPpctItem(positionId, 6);
+        const idsBefore = await logIdsOf(itemIds);
+
+        const result = await service.recalculateWithDefaultFrom(positionId, undefined, APPENDED);
+
+        expect(result).toEqual({ scheduled: 3 });
+        expect(await datesOf([...itemIds, sixthId])).toEqual([
+          '2026-01-05',
+          '2026-01-08',
+          '2026-01-12',
+          '2026-01-15',
+          '2026-01-19',
+          '2026-01-22',
+        ]);
+        expect(await logIdsOf(itemIds)).toEqual(idsBefore);
+      });
+
+      it('position chưa có log nào: xếp lần đầu từ đầu năm học dù hôm nay là 2026-01-14', async () => {
+        const { positionId, itemIds } = await arrange({ count: 3 });
+
+        const result = await service.recalculateWithDefaultFrom(positionId, undefined, APPENDED);
+
+        expect(result).toEqual({ scheduled: 3 });
+        expect(await datesOf(itemIds)).toEqual(['2026-01-05', '2026-01-08', '2026-01-12']);
+      });
+
+      it.each<[string, { done: boolean }]>([
+        ['chưa khóa', { done: false }],
+        ['đã done', { done: true }],
+      ])('log muộn nhất là bài 2 tiết (%s): mục mới không chen vào ô thứ 2 của bài đó', async (_label, lock) => {
+        const { positionId, itemIds } = await arrange({ count: 2 });
+        await models.ppctItem.updateOne({ _id: itemIds[1] }, { periodCount: 2 });
+        await service.recalculate(positionId, YEAR_START);
+        await models.lessonLog.updateOne({ ppctItemId: itemIds[1] }, lock);
+        const thirdId = await addPpctItem(positionId, 3);
+        clock.set('2026-01-20T03:00:00Z');
+
+        await service.recalculateWithDefaultFrom(positionId, undefined, APPENDED);
+
+        // Bài 2 bắt đầu 01-08 và chiếm cả ô 01-12; mục 3 vào ô tự do kế tiếp 01-15.
+        expect(await datesOf([...itemIds, thirdId])).toEqual(['2026-01-05', '2026-01-08', '2026-01-15']);
+      });
     });
   });
 

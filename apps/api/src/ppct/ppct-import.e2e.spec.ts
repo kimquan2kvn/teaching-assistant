@@ -1,6 +1,12 @@
 import ExcelJS from 'exceljs';
 import request from 'supertest';
-import { PPCT_IMPORT_HEADERS } from '@so-chu-nhiem/shared';
+import {
+  MAX_PPCT_IMPORT_ROWS,
+  MAX_PPCT_PERIOD_COUNT,
+  MAX_PPCT_WEEK,
+  PPCT_IMPORT_HEADERS,
+  ppctImportCommitSchema,
+} from '@so-chu-nhiem/shared';
 import { formatDateOnly } from '../common/utils/date';
 import { LessonLogEngineService } from '../lesson-logs/lesson-log-engine.service';
 import { PpctController } from './ppct.controller';
@@ -16,6 +22,9 @@ const MON_THU_SLOTS = [
   { dayOfWeek: 2, period: 1 },
   { dayOfWeek: 5, period: 3 },
 ];
+const DEFAULT_NOW = '2026-01-04T03:00:00Z';
+// Giữa năm học: các ô 01-05, 01-08, 01-12 của TKB Thứ Hai/Thứ Năm đã qua, ô tự do kế tiếp là 01-15.
+const MID_YEAR_NOW = '2026-01-14T03:00:00Z';
 
 type SheetCell = string | number | null;
 
@@ -281,6 +290,46 @@ describe('Ppct import (e2e)', () => {
       expect(await ctx.models.ppctItem.countDocuments({ positionId })).toBe(1);
     });
 
+    describe('lô lớn: body vượt 100kb mặc định của express', () => {
+      // Độ dài tối đa của từng field theo ppctImportCommitSchema. Dùng chữ tiếng Việt 3 byte UTF-8 (không phải ASCII)
+      // để body lớn nhất có thể, vì giới hạn body tính theo byte chứ không theo số ký tự.
+      const WIDE_CHAR = 'ế';
+      const MAX_FIELD_LENGTH = { periodLabel: 20, title: 300, requirement: 1000, note: 500 };
+      const maxRow = () => ({
+        week: MAX_PPCT_WEEK,
+        periodLabel: WIDE_CHAR.repeat(MAX_FIELD_LENGTH.periodLabel),
+        title: WIDE_CHAR.repeat(MAX_FIELD_LENGTH.title),
+        periodCount: MAX_PPCT_PERIOD_COUNT,
+        requirement: WIDE_CHAR.repeat(MAX_FIELD_LENGTH.requirement),
+        note: WIDE_CHAR.repeat(MAX_FIELD_LENGTH.note),
+      });
+
+      it('fixture đúng là độ dài tối đa của schema dùng chung (nới schema thì phải xem lại giới hạn body)', () => {
+        const rows = Array.from({ length: MAX_PPCT_IMPORT_ROWS }, maxRow);
+
+        expect(ppctImportCommitSchema.safeParse({ rows }).success).toBe(true);
+        expect(ppctImportCommitSchema.safeParse({ rows: [...rows, maxRow()] }).success).toBe(false);
+        for (const field of ['periodLabel', 'title', 'requirement', 'note'] as const) {
+          const tooLong = { ...maxRow(), [field]: WIDE_CHAR.repeat(MAX_FIELD_LENGTH[field] + 1) };
+          expect(ppctImportCommitSchema.safeParse({ rows: [tooLong] }).success).toBe(false);
+        }
+      });
+
+      it('500 dòng ở độ dài tối đa của mọi field (hơn 2 MB) -> 201, lưu đủ 500 mục có order liên tiếp, nội dung không bị cắt', async () => {
+        const { positionId } = await seedToan();
+        const rows = Array.from({ length: MAX_PPCT_IMPORT_ROWS }, maxRow);
+        expect(Buffer.byteLength(JSON.stringify({ rows }))).toBeGreaterThan(2 * 1024 * 1024);
+
+        const res = await commit(teacher, positionId, rows);
+
+        expect(res.status).toBe(201);
+        expect(res.body).toHaveLength(MAX_PPCT_IMPORT_ROWS);
+        expect(await ordersOf(positionId)).toEqual(Array.from({ length: MAX_PPCT_IMPORT_ROWS }, (_, i) => i + 1));
+        const last = await ctx.models.ppctItem.findOne({ positionId, order: MAX_PPCT_IMPORT_ROWS });
+        expect(last).toMatchObject(maxRow());
+      });
+    });
+
     describe('rollback khi tính lại sổ báo giảng lỗi', () => {
       let consoleError: jest.SpyInstance;
 
@@ -332,6 +381,74 @@ describe('Ppct import (e2e)', () => {
 
       expect(commitRes.status).toBe(201);
       expect(await ordersOf(positionId)).toEqual([1, 2]);
+    });
+  });
+
+  describe('commit giữa năm học (hôm nay 2026-01-14, TKB khai báo từ 2026-01-05)', () => {
+    beforeEach(() => {
+      ctx.clock.set(MID_YEAR_NOW);
+    });
+
+    afterEach(() => {
+      ctx.clock.set(DEFAULT_NOW);
+    });
+
+    async function datesOf(itemIds: string[]): Promise<Array<string | null>> {
+      const logs = await ctx.models.lessonLog.find({ ppctItemId: { $in: itemIds } });
+      const byItem = new Map(logs.map((log) => [String(log.ppctItemId), formatDateOnly(log.date)]));
+      return itemIds.map((id) => byItem.get(id) ?? null);
+    }
+
+    async function snapshotOf(itemIds: string[]) {
+      const logs = await ctx.models.lessonLog.find({ ppctItemId: { $in: itemIds } });
+      const byItem = new Map(logs.map((log) => [String(log.ppctItemId), log]));
+      return itemIds.map((id) => {
+        const log = byItem.get(id);
+        return log ? { id: String(log._id), date: formatDateOnly(log.date), done: log.done } : null;
+      });
+    }
+
+    const idsOf = (res: { body: Array<{ _id: string }> }) => res.body.map((item) => item._id);
+
+    it('import cả 5 dòng vào position đã có TKB: xếp 01-05, 01-08, 01-12, 01-15, 01-19 như khi nhập từng mục', async () => {
+      const { positionId } = await seedToan();
+      await seedSlots(ctx.models, positionId, MON_THU_SLOTS);
+
+      const res = await commit(teacher, positionId, [1, 2, 3, 4, 5].map((n) => commitRow(n)));
+
+      expect(res.status).toBe(201);
+      expect(await datesOf(idsOf(res))).toEqual(MON_THU_DATES);
+    });
+
+    it('position đã có log ở quá khứ: các dòng mới nối ngay sau log cuối, log cũ không đổi', async () => {
+      const { positionId } = await seedToan();
+      await seedSlots(ctx.models, positionId, MON_THU_SLOTS);
+      const oldIds = await seedPpct(ctx.models, positionId, 2);
+      await engine.recalculate(positionId, d('2025-09-05'));
+      await ctx.models.lessonLog.updateOne({ ppctItemId: oldIds[0] }, { done: true });
+      const before = await snapshotOf(oldIds);
+      expect(before.map((log) => log?.date)).toEqual(['2026-01-05', '2026-01-08']);
+
+      const res = await commit(teacher, positionId, [commitRow(3), commitRow(4), commitRow(5)]);
+
+      expect(res.status).toBe(201);
+      expect(await datesOf(idsOf(res))).toEqual(['2026-01-12', '2026-01-15', '2026-01-19']);
+      expect(await snapshotOf(oldIds)).toEqual(before);
+    });
+
+    it('lịch đã kéo tới tương lai: các dòng mới nối đuôi từ hôm nay như cũ', async () => {
+      const { positionId } = await seedToan();
+      await seedSlots(ctx.models, positionId, MON_THU_SLOTS);
+      const oldIds = await seedPpct(ctx.models, positionId, 6);
+      await engine.recalculate(positionId, d('2025-09-05'));
+      const before = await snapshotOf(oldIds);
+      expect(before.map((log) => log?.date)).toEqual([...MON_THU_DATES, '2026-01-22']);
+
+      const res = await commit(teacher, positionId, [commitRow(7), commitRow(8)]);
+
+      expect(res.status).toBe(201);
+      expect(await datesOf(idsOf(res))).toEqual(['2026-01-26', '2026-01-29']);
+      expect(await snapshotOf(oldIds)).toEqual(before);
     });
   });
 });

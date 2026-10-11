@@ -15,6 +15,16 @@ const MON_THU_SLOTS = [
   { dayOfWeek: 2, period: 1 },
   { dayOfWeek: 5, period: 3 },
 ];
+// Tiết đôi: mỗi ngày dạy có 2 ô liên tiếp (Thứ Hai tiết 1-2, Thứ Năm tiết 3-4).
+const DOUBLE_PERIOD_SLOTS = [
+  { dayOfWeek: 2, period: 1 },
+  { dayOfWeek: 2, period: 2 },
+  { dayOfWeek: 5, period: 3 },
+  { dayOfWeek: 5, period: 4 },
+];
+const DEFAULT_NOW = '2026-01-04T03:00:00Z';
+// Giữa năm học: các ô 01-05, 01-08, 01-12 của TKB Thứ Hai/Thứ Năm đã qua, ô tự do kế tiếp là 01-15.
+const MID_YEAR_NOW = '2026-01-14T03:00:00Z';
 
 describe('Ppct (e2e)', () => {
   let ctx: Phase3App;
@@ -192,6 +202,205 @@ describe('Ppct (e2e)', () => {
       }
       // Năm học kết thúc 2026-05-31: chỉ còn Thứ Hai 05-25 -> 1 ô.
       expect(await datesOf(ids)).toEqual(['2026-05-25', null, null]);
+    });
+  });
+
+  describe('thêm mục giữa năm học (hôm nay 2026-01-14, TKB khai báo từ 2026-01-05)', () => {
+    beforeEach(() => {
+      ctx.clock.set(MID_YEAR_NOW);
+    });
+
+    afterEach(() => {
+      ctx.clock.set(DEFAULT_NOW);
+    });
+
+    // Position có TKB và `count` mục đã xếp sẵn từ đầu năm học: 01-05, 01-08, 01-12, 01-15, 01-19, 01-22, ...
+    async function seedPlaced(count: number, slots = MON_THU_SLOTS) {
+      const { positionId } = await seedToan();
+      await seedSlots(ctx.models, positionId, slots);
+      const ids = await seedPpct(ctx.models, positionId, count);
+      await engine.recalculate(positionId, d('2025-09-05'));
+      return { positionId, ids };
+    }
+
+    // Dấu vết đầy đủ của log theo thứ tự `itemIds` để so sánh "không đổi gì cả" (kể cả _id và cờ).
+    async function snapshotOf(itemIds: string[]) {
+      const logs = await ctx.models.lessonLog.find({ ppctItemId: { $in: itemIds } });
+      const byItem = new Map(logs.map((log) => [String(log.ppctItemId), log]));
+      return itemIds.map((id) => {
+        const log = byItem.get(id);
+        if (!log) return null;
+        return {
+          id: String(log._id),
+          date: formatDateOnly(log.date),
+          done: log.done,
+          isManuallyAdjusted: log.isManuallyAdjusted,
+        };
+      });
+    }
+
+    async function postItems(positionId: string, from: number, to: number): Promise<string[]> {
+      const ids: string[] = [];
+      for (let n = from; n <= to; n++) {
+        const res = await postItem(teacher, positionId, itemBody(n));
+        expect(res.status).toBe(201);
+        ids.push(res.body._id);
+      }
+      return ids;
+    }
+
+    it('POST từng mục 1..5: mỗi mục vào ô trống đầu tiên, không để ô trống nào ở giữa', async () => {
+      const { positionId } = await seedToan();
+      await seedSlots(ctx.models, positionId, MON_THU_SLOTS);
+
+      const ids: string[] = [];
+      for (let n = 1; n <= 5; n++) {
+        const res = await postItem(teacher, positionId, itemBody(n));
+        expect(res.status).toBe(201);
+        ids.push(res.body._id);
+        expect(await datesOf(ids)).toEqual(MON_THU_DATES.slice(0, n));
+      }
+      expect(await ordersOf(positionId)).toEqual([1, 2, 3, 4, 5]);
+      expect(await ctx.models.lessonLog.countDocuments({ positionId })).toBe(5);
+    });
+
+    it('nhập PPCT trước rồi mới khai báo TKB: cùng lịch với nhập TKB trước', async () => {
+      const { positionId } = await seedToan();
+      const ids = await postItems(positionId, 1, 5);
+      expect(await datesOf(ids)).toEqual([null, null, null, null, null]);
+
+      // TimetableSlotsService.create ghi slot rồi tính lại từ effectiveFrom của slot.
+      await seedSlots(ctx.models, positionId, MON_THU_SLOTS);
+      await engine.recalculate(positionId, d('2026-01-05'));
+
+      expect(await datesOf(ids)).toEqual(MON_THU_DATES);
+    });
+
+    it('TKB có tiết đôi: POST từng mục lấp nốt tiết còn trống trong ngày của mục trước', async () => {
+      const { positionId } = await seedToan();
+      await seedSlots(ctx.models, positionId, DOUBLE_PERIOD_SLOTS);
+
+      const ids: string[] = [];
+      for (let n = 1; n <= 5; n++) {
+        const res = await postItem(teacher, positionId, itemBody(n));
+        expect(res.status).toBe(201);
+        ids.push(res.body._id);
+      }
+
+      // Mỗi ngày 2 ô: 01-05 x2, 01-08 x2, 01-12; giống hệt khi import cả 5 mục một lượt.
+      expect(await datesOf(ids)).toEqual(['2026-01-05', '2026-01-05', '2026-01-08', '2026-01-08', '2026-01-12']);
+    });
+
+    it('lịch đã kéo tới tương lai: mục mới nối đuôi như cũ, log done / kéo tay / đã qua không đổi', async () => {
+      const { positionId, ids } = await seedPlaced(6);
+      expect(await datesOf(ids)).toEqual([...MON_THU_DATES, '2026-01-22']);
+      await ctx.models.lessonLog.updateOne({ ppctItemId: ids[1] }, { done: true }); // 01-08, đã dạy
+      await ctx.models.lessonLog.updateOne({ ppctItemId: ids[3] }, { isManuallyAdjusted: true }); // 01-15, giữ chỗ
+      const before = await snapshotOf(ids);
+
+      const res = await postItem(teacher, positionId, itemBody(7));
+
+      expect(res.status).toBe(201);
+      expect(await datesOf([...ids, res.body._id])).toEqual([...MON_THU_DATES, '2026-01-22', '2026-01-26']);
+      expect(await snapshotOf(ids)).toEqual(before);
+    });
+
+    it('log muộn nhất đúng hôm nay: mục mới nối ngay sau, log của hôm nay không đổi', async () => {
+      ctx.clock.set('2026-01-15T03:00:00Z');
+      const { positionId, ids } = await seedPlaced(4);
+      const before = await snapshotOf(ids);
+
+      const res = await postItem(teacher, positionId, itemBody(5));
+
+      expect(res.status).toBe(201);
+      expect(await datesOf([...ids, res.body._id])).toEqual(MON_THU_DATES);
+      expect(await snapshotOf(ids)).toEqual(before);
+    });
+
+    it('mọi log đã done ở quá khứ: mục mới vào ô trống kế tiếp (không nhảy tới hôm nay), log done không đổi', async () => {
+      const { positionId, ids } = await seedPlaced(2);
+      await ctx.models.lessonLog.updateMany({ ppctItemId: { $in: ids } }, { done: true });
+      const before = await snapshotOf(ids);
+      expect(before.map((log) => log?.date)).toEqual(['2026-01-05', '2026-01-08']);
+
+      const res = await postItem(teacher, positionId, itemBody(3));
+
+      expect(res.status).toBe(201);
+      expect(await datesOf([res.body._id])).toEqual(['2026-01-12']);
+      expect(await snapshotOf(ids)).toEqual(before);
+    });
+
+    it('log done ở quá khứ còn ô trống phía trước: không có log nào bị dời về ô trống đó', async () => {
+      const { positionId, ids } = await seedPlaced(2);
+      // Mục 2 kéo từ 01-08 sang 01-12 rồi tích đã dạy: ô 01-08 trống.
+      await ctx.models.lessonLog.updateOne(
+        { ppctItemId: ids[1] },
+        { isManuallyAdjusted: true, done: true, date: d('2026-01-12') },
+      );
+      const before = await snapshotOf(ids);
+      expect(before.map((log) => log?.date)).toEqual(['2026-01-05', '2026-01-12']);
+
+      const res = await postItem(teacher, positionId, itemBody(3));
+
+      expect(res.status).toBe(201);
+      expect(await datesOf([res.body._id])).toEqual(['2026-01-15']);
+      expect(await snapshotOf(ids)).toEqual(before);
+    });
+
+    it('mục đã qua vừa được PATCH tăng số tiết (chiếm lấn ô của mục sau): POST mục mới không dời log nào ở quá khứ', async () => {
+      const { positionId, ids } = await seedPlaced(3); // 01-05, 01-08, 01-12
+      const patch = await as(teacher, api().patch(ppctUrl(positionId, ids[1]))).send({ periodCount: 2 });
+      expect(patch.status).toBe(200);
+      const before = await snapshotOf(ids);
+      // PATCH tính từ hôm nay nên không đụng log đã qua, dù bài 2 giờ chiếm cả ô 01-12 của mục 3.
+      expect(before.map((log) => log?.date)).toEqual(['2026-01-05', '2026-01-08', '2026-01-12']);
+
+      const res = await postItem(teacher, positionId, itemBody(4));
+
+      expect(res.status).toBe(201);
+      // Mục 3 (log vẫn ở 01-12) giữ chỗ ô kế tiếp 01-15 nên mục 4 vào 01-19; không log cũ nào bị xếp lại.
+      expect(await datesOf([res.body._id])).toEqual(['2026-01-19']);
+      expect(await snapshotOf(ids)).toEqual(before);
+    });
+
+    // PATCH/DELETE giữ quy tắc "đã có log thì từ hôm nay": mục chưa có log không lấp các ô đã qua. Hôm nay 01-20 để
+    // giữa log muộn nhất (01-12) và hôm nay còn 2 ô trống (01-15, 01-19) làm phép thử.
+    describe('sửa/xóa mục vẫn tính lại từ hôm nay (2026-01-20)', () => {
+      beforeEach(() => {
+        ctx.clock.set('2026-01-20T03:00:00Z');
+      });
+
+      // 3 mục đã xếp ở quá khứ (01-05, 01-08, 01-12) + mục 4 chưa có log.
+      async function seedWithPendingItem() {
+        const { positionId, ids } = await seedPlaced(3);
+        const [pendingItem] = await ctx.models.ppctItem.create([
+          { positionId, order: 4, week: 4, periodLabel: '4', title: 'Bài 4', periodCount: 1 },
+        ]);
+        expect(await datesOf(ids)).toEqual(['2026-01-05', '2026-01-08', '2026-01-12']);
+        return { positionId, ids, pendingId: String(pendingItem._id) };
+      }
+
+      it('PATCH: mục chưa có log được xếp vào ô trống đầu tiên từ hôm nay (01-22), không phải 01-15', async () => {
+        const { positionId, ids, pendingId } = await seedWithPendingItem();
+        const before = await snapshotOf(ids);
+
+        const res = await as(teacher, api().patch(ppctUrl(positionId, ids[0]))).send({ title: 'Đổi tên' });
+
+        expect(res.status).toBe(200);
+        expect(await datesOf([pendingId])).toEqual(['2026-01-22']);
+        expect(await snapshotOf(ids)).toEqual(before);
+      });
+
+      it('DELETE: mục chưa có log được xếp vào ô trống đầu tiên từ hôm nay (01-22), không phải 01-15', async () => {
+        const { positionId, ids, pendingId } = await seedWithPendingItem();
+        const before = await snapshotOf(ids.slice(1));
+
+        const res = await as(teacher, api().delete(ppctUrl(positionId, ids[0])));
+
+        expect(res.status).toBe(200);
+        expect(await datesOf([pendingId])).toEqual(['2026-01-22']);
+        expect(await snapshotOf(ids.slice(1))).toEqual(before);
+      });
     });
   });
 
