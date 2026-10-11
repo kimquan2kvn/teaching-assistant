@@ -187,6 +187,10 @@ Chi tiết: `docs/superpowers/specs/2026-10-11-phase3-design.md` (đã duyệt 2
   bỏ qua kiểm tra chủ sở hữu nhưng gọi position không tồn tại vẫn nhận 403 (hành vi sẵn có của guard, không phải 404).
 - **`GET calendar-stats` cần có `SchoolConfig` trong DB**, thiếu thì 404 `Chưa có cấu hình trường...` như các module
   Phase 2 (seed script có tạo config).
+- **Engine giữ chỗ cho mọi log được giữ, kể cả log trước `fromDate` có `periodCount > 1`** (sửa sau review): ô dựng từ
+  ngày sớm nhất của log được giữ nên bài nhiều tiết đã bắt đầu trước `fromDate` vẫn chiếm các ô sau `fromDate` của nó
+  (tính lại từ bất kỳ `fromDate` nào cho cùng lịch như từ đầu năm); khi tính lại, ngày nghỉ lấy cả năm học. Log chưa
+  khóa ở quá khứ mà ngày của nó không còn ô (TKB đổi ngoài luồng) không chiếm ô nào; log khóa vẫn trôi sang ô kế tiếp.
 - **Câu hỏi mở của plan**: câu 1–4 (không chặn slot Thứ Bảy; `fromDate` mặc định hôm nay VN + lần xếp đầu từ đầu năm
   học; không thêm `period` vào `LessonLog`; PPCT v1 chỉ thêm cuối) người dùng đã xác nhận giữ mặc định ngày
   2026-10-11. Câu 5 (403 tiếng Anh `Forbidden resource` của guard, tồn tại từ Phase 1–2) và câu 6 (`reassign` có thể

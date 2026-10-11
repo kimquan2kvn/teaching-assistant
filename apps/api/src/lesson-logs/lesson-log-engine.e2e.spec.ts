@@ -181,6 +181,75 @@ describe('LessonLogEngineService (e2e)', () => {
     expect(await models.lessonLog.countDocuments({ positionId })).toBe(5);
   });
 
+  describe('(m) bài nhiều tiết bắt đầu trước fromDate vẫn giữ các ô sau fromDate', () => {
+    // Bài 2 chiếm 2 ô (01-08 và 01-12): ngày hôm nay/fromDate rơi vào giữa 2 ô đó là chỗ engine dễ làm mất tiết thứ 2.
+    async function arrangeMultiPeriod() {
+      const ctx = await arrange({ count: 4 });
+      await models.ppctItem.updateOne({ _id: ctx.itemIds[1] }, { periodCount: 2 });
+      await service.recalculate(ctx.positionId, YEAR_START);
+      expect(await datesOf(ctx.itemIds)).toEqual(['2026-01-05', '2026-01-08', '2026-01-15', '2026-01-19']);
+      return ctx;
+    }
+
+    it('recalculateWithDefaultFrom với hôm nay = 01-10 (giữa 2 ô của bài 2): không đổi ngày/_id của bất kỳ log nào', async () => {
+      const { positionId, itemIds } = await arrangeMultiPeriod();
+      const idsBefore = await logIdsOf(itemIds);
+      clock.set('2026-01-10T03:00:00Z');
+
+      await service.recalculateWithDefaultFrom(positionId);
+
+      expect(await datesOf(itemIds)).toEqual(['2026-01-05', '2026-01-08', '2026-01-15', '2026-01-19']);
+      expect(await logIdsOf(itemIds)).toEqual(idsBefore);
+    });
+
+    it('thêm ngày nghỉ 01-12 (ô thứ 2 của bài 2) rồi tính lại từ đó: bài 2 lấy ô kế tiếp, bài 3, 4 lùi', async () => {
+      const { schoolYearId, positionId, itemIds } = await arrangeMultiPeriod();
+      await models.holiday.create({
+        schoolYearId,
+        startDate: d('2026-01-12'),
+        endDate: d('2026-01-12'),
+        type: 'LE',
+        name: 'Nghỉ',
+      });
+
+      await service.recalculate(positionId, d('2026-01-12'));
+
+      expect(await datesOf(itemIds)).toEqual(['2026-01-05', '2026-01-08', '2026-01-19', '2026-01-22']);
+    });
+
+    it('tính lại từ mọi fromDate khác nhau (có bài 2-3 tiết, ngày nghỉ, log done) cho đúng cùng một lịch, giữ nguyên _id', async () => {
+      const { schoolYearId, positionId, itemIds } = await arrange({ count: 6 });
+      const periodCounts = [1, 2, 1, 3, 1, 1];
+      for (const [i, periodCount] of periodCounts.entries()) {
+        await models.ppctItem.updateOne({ _id: itemIds[i] }, { periodCount });
+      }
+      await service.recalculate(positionId, YEAR_START);
+      await models.lessonLog.updateOne({ ppctItemId: itemIds[2] }, { done: true });
+      await models.holiday.create({
+        schoolYearId,
+        startDate: d('2026-01-12'),
+        endDate: d('2026-01-12'),
+        type: 'LE',
+        name: 'Nghỉ',
+      });
+      await service.recalculate(positionId, d('2026-01-12'));
+      const baseline = ['2026-01-05', '2026-01-08', '2026-01-15', '2026-01-22', '2026-02-02', '2026-02-05'];
+      expect(await datesOf(itemIds)).toEqual(baseline);
+      const idsBefore = await logIdsOf(itemIds);
+
+      const fromDates = ['2025-09-05', '2026-01-05', '2026-01-06', '2026-01-08', '2026-01-09', '2026-01-10', '2026-01-12'].concat(
+        ['2026-01-13', '2026-01-15', '2026-01-16', '2026-01-19', '2026-01-20', '2026-01-22', '2026-01-23', '2026-01-27'],
+        ['2026-02-02', '2026-02-03', '2026-02-05', '2026-02-06'],
+      );
+      for (const from of fromDates) {
+        await service.recalculate(positionId, d(from));
+
+        expect({ from, dates: await datesOf(itemIds) }).toEqual({ from, dates: baseline });
+        expect(await logIdsOf(itemIds)).toEqual(idsBefore);
+      }
+    });
+  });
+
   describe('(g) recalculateWithDefaultFrom', () => {
     it('position chưa có log nào: rơi về đầu năm học dù hôm nay là 2026-01-14', async () => {
       const { positionId, itemIds } = await arrange({ count: 5 });

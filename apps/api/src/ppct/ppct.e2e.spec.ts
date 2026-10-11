@@ -210,6 +210,32 @@ describe('Ppct (e2e)', () => {
       expect(await datesOf(ids)).toEqual(['2026-01-05', '2026-01-08', '2026-01-15', '2026-01-19', '2026-01-22']);
     });
 
+    it('PATCH sửa chính tả khi đang dạy dở bài 2 tiết (hôm nay 01-10, giữa 2 ô của bài 2): lịch các bài không đổi', async () => {
+      const { positionId } = await seedToan();
+      await seedSlots(ctx.models, positionId, MON_THU_SLOTS);
+      const ids: string[] = [];
+      for (const [i, periodCount] of [1, 2, 1, 1].entries()) {
+        const res = await postItem(teacher, positionId, itemBody(i + 1, { periodCount }));
+        expect(res.status).toBe(201);
+        ids.push(res.body._id);
+      }
+      const scheduled = ['2026-01-05', '2026-01-08', '2026-01-15', '2026-01-19'];
+      expect(await datesOf(ids)).toEqual(scheduled);
+      const logIdsBefore = (await ctx.models.lessonLog.find({ positionId }).sort({ date: 1 })).map((log) => String(log._id));
+
+      try {
+        ctx.clock.set('2026-01-10T03:00:00Z');
+        const res = await as(teacher, api().patch(ppctUrl(positionId, ids[3]))).send({ title: 'Bài 4 (đã sửa chính tả)' });
+        expect(res.status).toBe(200);
+      } finally {
+        ctx.clock.set('2026-01-04T03:00:00Z');
+      }
+
+      expect(await datesOf(ids)).toEqual(scheduled);
+      const logIdsAfter = (await ctx.models.lessonLog.find({ positionId }).sort({ date: 1 })).map((log) => String(log._id));
+      expect(logIdsAfter).toEqual(logIdsBefore);
+    });
+
     it('PATCH chỉ gửi { title } không làm mất requirement, note, week, periodLabel; order không đổi', async () => {
       const { positionId } = await seedToan();
       const created = await postItem(teacher, positionId, itemBody(1, { note: 'Ghi chú cũ' }));

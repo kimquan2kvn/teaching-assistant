@@ -49,9 +49,9 @@ export class LessonLogEngineService {
     const from = maxDate(fromDate, year.startDate);
 
     const slots = await this.timetableSlotModel.find({ positionId: position._id }).session(session);
-    const holidays = await this.holidayModel
-      .find({ schoolYearId: year._id, endDate: { $gte: from } })
-      .session(session);
+    // Ngày nghỉ cả năm học (không cắt theo `from`): engine dựng ô từ log được giữ sớm nhất để giữ chỗ cho bài nhiều
+    // tiết bắt đầu trước `from`, nên ngày nghỉ trước `from` cũng quyết định các ô đó.
+    const holidays = await this.holidayModel.find({ schoolYearId: year._id }).session(session);
     const ppctItems = await this.ppctItemModel.find({ positionId: position._id }).session(session);
     const keptLogs = await this.lessonLogModel
       .find({ positionId: position._id, $or: [{ date: { $lt: from } }, { isManuallyAdjusted: true }, { done: true }] })
@@ -63,7 +63,11 @@ export class LessonLogEngineService {
       slots,
       holidays,
       ppctItems: toScheduleItems(ppctItems),
-      keptLogs: keptLogs.map((log) => ({ ppctItemId: String(log.ppctItemId), date: log.date })),
+      keptLogs: keptLogs.map((log) => ({
+        ppctItemId: String(log.ppctItemId),
+        date: log.date,
+        locked: Boolean(log.isManuallyAdjusted || log.done),
+      })),
     });
 
     // Log chưa khóa từ `from` trở đi mà mục không còn chỗ (hoặc không còn được xếp) thì xóa; còn lại upsert để

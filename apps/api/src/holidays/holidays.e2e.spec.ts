@@ -222,6 +222,25 @@ describe('Holidays (e2e)', () => {
       expect(await datesOf(itemIds)).toEqual(INITIAL_DATES);
     });
 
+    it('ngày nghỉ rơi vào ô thứ 2 của bài nhiều tiết: bài đó lấy ô kế tiếp còn lại, các bài sau lùi đúng', async () => {
+      const { positionId } = await seedSubjectPosition(ctx.models, {
+        schoolYearId: ctx.schoolYearId,
+        className: '11A4',
+        subject: 'Toán',
+      });
+      await seedSlots(ctx.models, positionId, MON_THU);
+      const itemIds = await seedPpct(ctx.models, positionId, 4);
+      await ctx.models.ppctItem.updateOne({ _id: itemIds[1] }, { periodCount: 2 });
+      await engine.recalculate(positionId, d('2025-09-05'));
+      // Bài 2 chiếm 01-08 và 01-12.
+      expect(await datesOf(itemIds)).toEqual(['2026-01-05', '2026-01-08', '2026-01-15', '2026-01-19']);
+
+      const created = await createHoliday({ startDate: '2026-01-12', endDate: '2026-01-12' });
+
+      expect(created.status).toBe(201);
+      expect(await datesOf(itemIds)).toEqual(['2026-01-05', '2026-01-08', '2026-01-19', '2026-01-22']);
+    });
+
     it('ngày nghỉ của năm học này không làm đổi position của năm học khác', async () => {
       const other = await seedSchoolYear(ctx.models, { name: 'KHAC', start: '2026-01-01', end: '2026-06-30' });
       const mine = await arrangePpct();

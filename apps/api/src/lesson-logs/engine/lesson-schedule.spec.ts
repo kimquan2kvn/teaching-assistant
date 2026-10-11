@@ -1,10 +1,14 @@
-import { formatDateOnly, toVnDayOfWeek } from '../../common/utils/date';
+import { addDays, formatDateOnly, toVnDayOfWeek } from '../../common/utils/date';
 import {
   buildCells,
   computeLessonSchedule,
+  KeptLog,
   reserveKeptLogs,
+  ScheduleHoliday,
   ScheduleInput,
   ScheduledLesson,
+  ScheduleSlot,
+  SchedulePpctItem,
 } from './lesson-schedule';
 
 const d = (s: string) => new Date(`${s}T00:00:00.000Z`);
@@ -207,6 +211,167 @@ describe('computeLessonSchedule', () => {
     expect(first.length).toBeGreaterThan(0);
     expect(second).toEqual(first);
     expect(JSON.stringify({ slots, holidays, ppctItems, keptLogs, fromDate, yearEnd })).toBe(before);
+  });
+});
+
+describe('log được giữ có periodCount > 1 bắt đầu trước fromDate vẫn chiếm các ô từ fromDate trở đi', () => {
+  const MULTI_ITEMS = [item(1), item(2, 2), item(3), item(4)];
+  const KEPT_BEFORE_SECOND_CELL: KeptLog[] = [
+    { ppctItemId: 'i1', date: d('2026-01-05') },
+    { ppctItemId: 'i2', date: d('2026-01-08') },
+  ];
+
+  it('đối chứng: tính từ đầu, i2 chiếm 01-08 và 01-12, i3 vào 01-15, i4 vào 01-19', () => {
+    expect(out(run({ ppctItems: MULTI_ITEMS }))).toEqual(['i1@2026-01-05', 'i2@2026-01-08', 'i3@2026-01-15', 'i4@2026-01-19']);
+  });
+
+  it('fromDate=01-10 (giữa 2 ô của i2): i3, i4 không chèn vào ô thứ 2 của i2, ra đúng như tính từ đầu', () => {
+    const result = run({ fromDate: d('2026-01-10'), ppctItems: MULTI_ITEMS, keptLogs: KEPT_BEFORE_SECOND_CELL });
+    expect(out(result)).toEqual(['i3@2026-01-15', 'i4@2026-01-19']);
+  });
+
+  it('ngày nghỉ 01-12 rơi vào ô thứ 2 của i2, tính từ 01-12: i2 lấy ô kế tiếp còn lại (01-15) nên i3, i4 lùi', () => {
+    const result = run({
+      fromDate: d('2026-01-12'),
+      holidays: [{ startDate: d('2026-01-12'), endDate: d('2026-01-12') }],
+      ppctItems: MULTI_ITEMS,
+      keptLogs: KEPT_BEFORE_SECOND_CELL,
+    });
+    expect(out(result)).toEqual(['i3@2026-01-19', 'i4@2026-01-22']);
+  });
+
+  it('log quá khứ mà ngày của nó không còn ô không được chiếm mất ô của log quá khứ khác (TKB đổi ngoài luồng)', () => {
+    const result = run({
+      fromDate: d('2026-01-15'),
+      slots: [slot(2, 1)],
+      keptLogs: [
+        { ppctItemId: 'i1', date: d('2026-01-05'), locked: false },
+        { ppctItemId: 'i2', date: d('2026-01-08'), locked: false },
+        { ppctItemId: 'i3', date: d('2026-01-12'), locked: false },
+      ],
+    });
+    expect(out(result)).toEqual(['i4@2026-01-19', 'i5@2026-01-26']);
+  });
+});
+
+describe('bất biến: tính lại từ BẤT KỲ fromDate nào cho đúng lịch như tính lại từ đầu năm', () => {
+  const YEAR_END = d('2026-05-31');
+  const FIRST_DAY = d('2026-01-05');
+  const LAST_PROBE_DAY = d('2026-04-30');
+  const periodCounts = (counts: number[]): SchedulePpctItem[] => counts.map((count, i) => item(i + 1, count));
+  const holiday = (from: string, to = from): ScheduleHoliday => ({ startDate: d(from), endDate: d(to) });
+  const at = (ppctItemId: string, date: string): KeptLog => ({ ppctItemId, date: d(date) });
+
+  interface Fixture {
+    name: string;
+    slots: ScheduleSlot[];
+    holidays: ScheduleHoliday[];
+    ppctItems: SchedulePpctItem[];
+    // Log bị khóa (done / kéo tay): cố định ngày, cả hai cách tính đều phải giữ nguyên.
+    locked: KeptLog[];
+  }
+
+  const MIXED_COUNTS = [1, 2, 1, 3, 1, 2, 1, 1, 2, 1, 1, 1];
+  const fixtures: Fixture[] = [
+    { name: 'bài 2-3 tiết, không ngày nghỉ', slots: MON_THU, holidays: [], ppctItems: periodCounts(MIXED_COUNTS), locked: [] },
+    {
+      name: 'ngày nghỉ rơi vào ô thứ 2/3 của bài nhiều tiết + nghỉ cả tuần',
+      slots: MON_THU,
+      holidays: [holiday('2026-01-12'), holiday('2026-01-22'), holiday('2026-02-02', '2026-02-08')],
+      ppctItems: periodCounts(MIXED_COUNTS),
+      locked: [],
+    },
+    {
+      name: 'nhiều tiết trong ngày + slot Thứ Bảy',
+      slots: [slot(2, 1), slot(2, 2), slot(5, 3), slot(7, 1)],
+      holidays: [holiday('2026-01-10')],
+      ppctItems: periodCounts([2, 1, 3, 1, 2, 2, 1, 3, 1, 1]),
+      locked: [],
+    },
+    {
+      name: 'đổi TKB giữa chừng (2 rồi 3 tiết/tuần)',
+      slots: [
+        slot(2, 1, '2026-01-05', '2026-01-18'),
+        slot(5, 3, '2026-01-05', '2026-01-18'),
+        slot(2, 1, '2026-01-19'),
+        slot(4, 2, '2026-01-19'),
+        slot(6, 4, '2026-01-19'),
+      ],
+      holidays: [holiday('2026-01-26')],
+      ppctItems: periodCounts(MIXED_COUNTS),
+      locked: [],
+    },
+    {
+      name: 'log done xen giữa các bài nhiều tiết',
+      slots: MON_THU,
+      holidays: [holiday('2026-01-12')],
+      ppctItems: periodCounts(MIXED_COUNTS),
+      locked: [at('i3', '2026-01-15'), at('i6', '2026-02-02')],
+    },
+    {
+      name: 'log khóa nằm đúng ngày nghỉ (trôi sang ô kế tiếp)',
+      slots: MON_THU,
+      holidays: [holiday('2026-01-12'), holiday('2026-01-26')],
+      ppctItems: periodCounts(MIXED_COUNTS),
+      locked: [at('i3', '2026-01-12'), at('i5', '2026-01-26')],
+    },
+    {
+      name: 'log kéo tay vào đúng giữa độ dài của bài nhiều tiết đứng trước nó',
+      slots: MON_THU,
+      holidays: [],
+      ppctItems: periodCounts([1, 2, 1, 1, 3, 1, 1]),
+      locked: [at('i4', '2026-01-12'), at('i7', '2026-01-19')],
+    },
+  ];
+
+  // Mô phỏng đúng cách LessonLogEngineService chọn log được giữ: mọi log có date < fromDate + mọi log khóa.
+  function recomputeFrom(fixture: Fixture, baseline: Map<string, Date>, fromDate: Date, withLockFlags: boolean) {
+    const lockedIds = new Set(fixture.locked.map((log) => log.ppctItemId));
+    const keptLogs: KeptLog[] = [];
+    for (const [ppctItemId, date] of baseline) {
+      const isLocked = lockedIds.has(ppctItemId);
+      if (date.getTime() >= fromDate.getTime() && !isLocked) continue;
+      keptLogs.push(withLockFlags ? { ppctItemId, date, locked: isLocked } : { ppctItemId, date });
+    }
+    const scheduled = computeLessonSchedule({
+      fromDate,
+      yearEnd: YEAR_END,
+      slots: fixture.slots,
+      holidays: fixture.holidays,
+      ppctItems: fixture.ppctItems,
+      keptLogs,
+    });
+    return { keptLogs, scheduled };
+  }
+
+  describe.each([
+    ['log được giữ có cờ locked như service truyền', true],
+    ['log được giữ không có cờ locked (KeptLog thuần)', false],
+  ])('%s', (_label, withLockFlags) => {
+    it.each(fixtures)('$name', (fixture) => {
+      const fromScratch = computeLessonSchedule({
+        fromDate: FIRST_DAY,
+        yearEnd: YEAR_END,
+        slots: fixture.slots,
+        holidays: fixture.holidays,
+        ppctItems: fixture.ppctItems,
+        keptLogs: fixture.locked,
+      });
+      expect(fromScratch.length + fixture.locked.length).toBeGreaterThanOrEqual(fixture.ppctItems.length - 2);
+      const baseline = new Map<string, Date>(fixture.locked.map((log) => [log.ppctItemId, log.date]));
+      for (const lesson of fromScratch) baseline.set(lesson.ppctItemId, lesson.date);
+
+      for (let from = FIRST_DAY; from.getTime() <= LAST_PROBE_DAY.getTime(); from = addDays(from, 1)) {
+        const { keptLogs, scheduled } = recomputeFrom(fixture, baseline, from, withLockFlags);
+        const keptIds = new Set(keptLogs.map((log) => log.ppctItemId));
+        const expected = fromScratch.filter((lesson) => !keptIds.has(lesson.ppctItemId));
+
+        expect({ from: formatDateOnly(from), dates: out(scheduled) }).toEqual({
+          from: formatDateOnly(from),
+          dates: out(expected),
+        });
+      }
+    });
   });
 });
 
