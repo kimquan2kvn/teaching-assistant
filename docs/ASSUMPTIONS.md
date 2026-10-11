@@ -123,3 +123,71 @@ Chi tiết: `docs/superpowers/specs/2026-10-11-phase3-design.md` (đã duyệt 2
 - **PPCT hết ô trống đến cuối năm học**: phần dư không có `LessonLog`, không báo lỗi.
 - **Tính lại đồng bộ trong request ghi**, không có nút "Khớp tiết lại" cho giáo viên; chỉ ADMIN có endpoint
   recalculate để sửa sự cố.
+- **Log "được giữ lại" gồm cả log quá khứ**: ngoài log bị khóa (`isManuallyAdjusted`/`done`) ở `date >= fromDate`,
+  mọi log có `date < fromDate` (kể cả chưa khóa) cũng được giữ nguyên và coi là mục đã xếp, engine không xếp lại
+  (nếu xếp lại thì insert vi phạm unique `(positionId, ppctItemId)`).
+- **`LessonLog` không lưu tiết** (chỉ có `date`) nên ô bị log khóa chiếm được suy ra từ `date`: log khóa chiếm
+  `periodCount` ô TỰ DO đầu tiên có `date >= log.date`, xử lý theo thứ tự `(date, order)`. Log khóa nằm trên ngày
+  không còn ô (vd vừa thành ngày nghỉ) chiếm ô tự do đầu tiên sau đó; `date` đã lưu không bị sửa. Muốn kéo-thả đúng
+  từng TIẾT trong ngày có từ 2 tiết thì phải thêm `period` vào schema (chưa làm).
+- **"Liên tiếp" là liên tiếp trong chuỗi ô tự do** (đã bỏ ô bị giữ chỗ). Mục không đủ `periodCount` ô tự do thì
+  engine DỪNG, các mục sau cũng không xếp để giữ đúng thứ tự `order`.
+- **Engine không đọc `saturdayIsSchoolDay`**: slot do giáo viên khai báo là nguồn đúng, cờ chỉ dùng cho thẻ thống
+  kê. Slot Thứ Bảy (`dayOfWeek = 7`) vẫn được xếp tiết khi cờ tắt, không bị chặn lúc tạo.
+- **Năm học của engine = năm học của lớp** (`Class.schoolYearId`), không phải "năm học hiện hành": ngày nghỉ lấy theo
+  năm đó, `fromDate` luôn bị kẹp `>= SchoolYear.startDate`. Trùng với năm hiện hành ở mọi luồng v1, nhưng không
+  404 khi không có năm hiện hành và vẫn đúng khi sửa lớp năm cũ.
+- **`fromDate` khi tính lại theo từng thao tác**: ghi slot → `effectiveFrom` (PATCH lấy giá trị nhỏ hơn giữa cũ/mới;
+  DELETE lấy `effectiveFrom` của slot); ghi ngày nghỉ → `startDate` (PATCH lấy min cũ/mới); ghi PPCT/import → hôm nay
+  (giờ Việt Nam). NGOẠI LỆ: position chưa có log nào (xếp lần đầu) thì tính từ đầu năm học, để thứ tự nhập
+  PPCT-trước/TKB-trước không làm khác kết quả. PPCT nhập giữa năm không tự lấp các buổi đã qua ngoài lần xếp đầu;
+  ADMIN `POST .../recalculate` nhận `fromDate` tuỳ chọn (mặc định như PPCT) để xử lý.
+- **Tính lại giữ nguyên `_id` log**: không xóa-chèn lại mà xóa log chưa khóa `date >= fromDate` của mục không còn được
+  xếp, rồi upsert theo `(positionId, ppctItemId)`, để id UI đang cầm không bị mồ côi sau mỗi lần tính lại.
+- **PPCT `order` do hệ thống gán**: POST luôn thêm CUỐI (`max(order)+1`), import nối tiếp sau `order` lớn nhất, PATCH
+  không đổi `order`, DELETE không đánh số lại (để trống chỗ). v1 không có chèn giữa/đổi thứ tự. Xóa mục PPCT xóa
+  luôn `LessonLog` của nó, kể cả log đã `done`.
+- **Giới hạn đầu vào** (hợp lý, không có trong brief): `period` của slot 1–10, `periodCount` 1–10, `week` 1–60,
+  `periodLabel` 1–20 ký tự (chỉ là chuỗi hiển thị, không ép regex vì mục 2 tiết có thể là `15-16`), import PPCT tối
+  đa 500 dòng.
+- **Slot/PPCT chỉ ghi được vào position `SUBJECT`**: ghi vào HOMEROOM trả 400; đọc position HOMEROOM trả rỗng.
+- **Thẻ thống kê ngày nghỉ** (`GET school-years/:id/calendar-stats`): đếm theo ngày LỊCH, ngày nghỉ bị cắt theo khoảng
+  năm học (cả Chủ Nhật nếu ngày nghỉ kéo qua). `totalHolidayDays` là hợp (mỗi ngày 1 lần dù chồng nhiều loại),
+  `leHolidayDays`/`dotXuatHolidayDays` là hợp theo từng loại. `remainingTeachingDays` = số ngày từ `asOf` (mặc định
+  hôm nay VN, tính cả `asOf`) đến hết năm học, trừ Chủ Nhật, trừ Thứ Bảy khi `saturdayIsSchoolDay = false`, trừ ngày
+  nghỉ. Query `asOf=yyyy-mm-dd` tuỳ chọn.
+- **Phân quyền đọc**: spec ghi `GET holidays`/`calendar-stats` cho "mọi user đăng nhập" nhưng cũng ghi STUDENT 403 mọi
+  route Phase 3, nên chốt TEACHER/ADMIN (STUDENT 403). `GET /timetable/me` và `GET /lesson-logs/week` chỉ TEACHER
+  (ADMIN cũng 403, đúng bảng phân quyền của spec).
+- **"Hôm nay" tính cố định UTC+7 qua `Clock`**, không theo giờ/múi giờ máy chủ (container thường chạy UTC); ngày lưu là
+  date-only 00:00 UTC. Lúc 00:00–07:00 sáng Thứ Hai giờ VN vẫn ra đúng tuần mới.
+- **Mã trả về**: DELETE trả `200 { deleted: true }`; `POST .../recalculate` trả `200 { scheduled }`; các POST tạo mới
+  (kể cả `import/preview`, `import/commit`) trả 201 mặc định của Nest, giống import học sinh Phase 1.
+
+### Phát sinh khi triển khai (đã chốt trong lúc code)
+
+- **Định dạng ngày trong API**: request nhận `yyyy-mm-dd`; response của holiday, slot, PPCT, log trả ISO đầy đủ
+  `yyyy-mm-ddT00:00:00.000Z` (Date serialize, như Phase 1–2). Chỉ `weekStart`/`weekEnd` của `GET /timetable/me` là
+  chuỗi `yyyy-mm-dd`.
+- **`recalculate` trả `scheduled`** = số mục được xếp/xếp lại trong lần chạy đó; mục được giữ (log quá khứ, log
+  khóa) không tính.
+- **`assertCanMoveLog` dựng ô cả năm học** nên kéo log tới ngày NGOÀI năm học trả 400 `Ngày này không có tiết của
+  môn` (cùng thông báo với ngày nghỉ/ngày không có slot); 409 chỉ khi mọi ô của ngày đó đã bị log KHÁC bị khóa chiếm.
+- **Trùng giờ "cùng giáo viên" quét mọi position khác của giáo viên đó, kể cả lớp năm học cũ**: có thể 409 oan nếu
+  giáo viên chưa ngừng phụ trách lớp năm cũ mà slot ở đó còn `effectiveTo = null`. Chưa xử lý (cùng nhóm với câu hỏi
+  mở 6 bên dưới).
+- **Kiểm tra trùng slot không an toàn tuyệt đối khi 2 request cùng position đến đồng thời**: không có unique index cho
+  khoảng hiệu lực chồng nhau nên 2 transaction song song có thể cùng qua kiểm tra. Rủi ro thấp (1 GVBM/position),
+  chưa xử lý.
+- **Preview import PPCT không chặn position HOMEROOM** (chỉ đọc file, không đụng DB); chỉ `import/commit` mới chặn
+  400. Preview báo thêm 3 lỗi dòng ngoài plan để khớp giới hạn của commit: `Tiết thứ quá dài (tối đa 20 ký tự)`,
+  `Yêu cầu cần đạt quá dài (tối đa 1000 ký tự)`, `Ghi chú quá dài (tối đa 500 ký tự)`. Độ dài tối đa: title PPCT 300,
+  requirement 1000, note 500, tên ngày nghỉ 200.
+- **`POST .../lesson-logs/recalculate` có `@RequirePositionOwner('SELF')`** chỉ để guard kiểm position tồn tại; ADMIN
+  bỏ qua kiểm tra chủ sở hữu nhưng gọi position không tồn tại vẫn nhận 403 (hành vi sẵn có của guard, không phải 404).
+- **`GET calendar-stats` cần có `SchoolConfig` trong DB**, thiếu thì 404 `Chưa có cấu hình trường...` như các module
+  Phase 2 (seed script có tạo config).
+- **Câu hỏi mở của plan**: câu 1–4 (không chặn slot Thứ Bảy; `fromDate` mặc định hôm nay VN + lần xếp đầu từ đầu năm
+  học; không thêm `period` vào `LessonLog`; PPCT v1 chỉ thêm cuối) người dùng đã xác nhận giữ mặc định ngày
+  2026-10-11. Câu 5 (403 tiếng Anh `Forbidden resource` của guard, tồn tại từ Phase 1–2) và câu 6 (`reassign` có thể
+  tạo slot trùng giờ vì kiểm tra chỉ chạy lúc ghi slot) vẫn mở, ngoài phạm vi Phase 3.
