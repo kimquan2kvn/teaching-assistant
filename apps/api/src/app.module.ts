@@ -15,6 +15,7 @@ import { PunishmentsModule } from './punishments/punishments.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { LessonLogsModule } from './lesson-logs/lesson-logs.module';
 import { HolidaysModule } from './holidays/holidays.module';
+import { TimetableSlotsModule } from './timetable-slots/timetable-slots.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { HolidaysModule } from './holidays/holidays.module';
     DashboardModule,
     LessonLogsModule,
     HolidaysModule,
+    TimetableSlotsModule,
   ],
 })
 export class AppModule {}
