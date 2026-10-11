@@ -22,6 +22,7 @@ export class SchoolConfigService {
     if (input.defaultPunishmentDueDays !== undefined) config.defaultPunishmentDueDays = input.defaultPunishmentDueDays;
     if (input.defaultWeeklyPunishmentLines !== undefined)
       config.defaultWeeklyPunishmentLines = input.defaultWeeklyPunishmentLines;
+    if (input.saturdayIsSchoolDay !== undefined) config.saturdayIsSchoolDay = input.saturdayIsSchoolDay;
     await config.save();
     return config;
   }

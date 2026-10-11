@@ -2,6 +2,7 @@ import request from 'supertest';
 import { Types } from 'mongoose';
 import { formatDateOnly } from '../common/utils/date';
 import { LessonLogEngineService } from '../lesson-logs/lesson-log-engine.service';
+import { SchoolConfigController } from '../school-config/school-config.controller';
 import { HolidaysController } from './holidays.controller';
 import { HolidaysService } from './holidays.service';
 import { Phase3App, createPhase3App } from '../../test/phase3-test-app';
@@ -27,7 +28,7 @@ describe('Holidays (e2e)', () => {
   beforeAll(async () => {
     ctx = await createPhase3App({
       dbName: 'holidays_e2e',
-      controllers: [HolidaysController],
+      controllers: [HolidaysController, SchoolConfigController],
       providers: [HolidaysService, LessonLogEngineService],
     });
     engine = ctx.app.get(LessonLogEngineService);
@@ -342,13 +343,23 @@ describe('Holidays (e2e)', () => {
       expect(res.body).toEqual({ totalHolidayDays: 4, leHolidayDays: 2, dotXuatHolidayDays: 2, remainingTeachingDays: 6 });
     });
 
-    it('bật saturdayIsSchoolDay thì Thứ Bảy được tính là ngày dạy', async () => {
+    // Bật/tắt cờ bằng đúng endpoint thật (không ghi thẳng model) để cả đường ghi của PATCH /school-config được kiểm.
+    it('ADMIN bật saturdayIsSchoolDay qua PATCH /school-config thì Thứ Bảy được tính là ngày dạy, tắt lại thì trở về như cũ', async () => {
       const yearId = await arrangeStatsYear();
       await addStatsHolidays(yearId);
-      await ctx.models.schoolConfig.updateOne({}, { saturdayIsSchoolDay: true });
+      const statsUrl = `/school-years/${yearId}/calendar-stats?asOf=2026-01-05`;
+      const remainingTeachingDays = async () => (await asAdmin(api().get(statsUrl))).body.remainingTeachingDays;
+      expect(await remainingTeachingDays()).toBe(6);
 
-      const res = await asAdmin(api().get(`/school-years/${yearId}/calendar-stats?asOf=2026-01-05`));
-      expect(res.body.remainingTeachingDays).toBe(8);
+      const turnOn = await asAdmin(api().patch('/school-config')).send({ saturdayIsSchoolDay: true });
+      expect(turnOn.status).toBe(200);
+      expect(turnOn.body.saturdayIsSchoolDay).toBe(true);
+      expect(await remainingTeachingDays()).toBe(8);
+
+      const turnOff = await asAdmin(api().patch('/school-config')).send({ saturdayIsSchoolDay: false });
+      expect(turnOff.status).toBe(200);
+      expect(turnOff.body.saturdayIsSchoolDay).toBe(false);
+      expect(await remainingTeachingDays()).toBe(6);
     });
 
     it('asOf sai định dạng hoặc ngày không có thật -> 400', async () => {
