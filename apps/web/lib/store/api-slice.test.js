@@ -136,3 +136,29 @@ test('tagTypes có đủ các tag Phase 2 (điểm danh, vi phạm, xếp loại
   }
   errorSpy.mockRestore();
 });
+
+test('tagTypes có đủ 7 tag Phase 3 (lịch năm học, PPCT, TKB, sổ báo giảng) cho các slice mới dùng', () => {
+  // Bản dev của RTK Query (bản Jest nạp) tự console.error "Tag type 'X' was used, but not specified in
+  // `tagTypes`!" khi 1 tag chưa khai báo được dùng — dùng đúng cơ chế này (cùng ý với test tag Phase 2 ở trên)
+  // thay vì đoán theo tên biến. invalidateTags đi qua cùng bước kiểm tra mà không cần dựng endpoint giả.
+  const phase3TagTypes = [
+    'SchoolYears',
+    'Holidays',
+    'CalendarStats',
+    'TimetableSlots',
+    'PpctItems',
+    'LessonLogs',
+    'TeacherWeek',
+  ];
+  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const store = makeStore();
+    store.dispatch(apiSlice.util.invalidateTags(phase3TagTypes));
+    const undeclaredTagMessages = errorSpy.mock.calls
+      .map(([message]) => String(message))
+      .filter((message) => message.includes('not specified in `tagTypes`'));
+    expect(undeclaredTagMessages).toEqual([]);
+  } finally {
+    errorSpy.mockRestore();
+  }
+});
