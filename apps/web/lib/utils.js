@@ -59,6 +59,9 @@ export function formatSignedPoints(points) {
 }
 
 const FORBIDDEN_MESSAGE = 'Bạn không có quyền thực hiện thao tác này';
+// Cả hai endpoint import (học sinh, PPCT) đều giới hạn file 5MB ở backend (MAX_IMPORT_FILE_SIZE_BYTES).
+const FILE_TOO_LARGE_MESSAGE = 'File quá lớn (tối đa 5MB)';
+const UNREADABLE_UPLOAD_MESSAGE = 'Không đọc được file tải lên, vui lòng chọn lại file';
 
 function containsNonAscii(text) {
   return Array.from(text).some((char) => char.charCodeAt(0) > 0x7f);
@@ -67,13 +70,21 @@ function containsNonAscii(text) {
 // Thông báo lỗi hiển thị cho người dùng từ lỗi RTK Query (`err` của `.unwrap()`). 403 do guard của Nest trả
 // message tiếng Anh ("Forbidden resource"), còn 403 do service chủ động ném (vd "Bạn không giữ vị trí này") đã là
 // tiếng Việt: message có ký tự ngoài ASCII được coi là tiếng Việt và giữ nguyên, ngược lại thay bằng câu cố định.
+// Cùng quy tắc cho 413 (multer trả "File too large"), kể cả khi reverse proxy chặn trước bằng trang HTML — khi đó
+// RTK Query báo PARSING_ERROR và mã thật nằm ở `originalStatus`. Upload multipart hỏng, multer/busboy trả message
+// tiếng Anh bắt đầu bằng "Multipart" (vd "Multipart: Boundary not found"), cũng đổi sang câu cố định.
 // Mã khác: hiện nguyên văn message của backend; thiếu/rỗng/không phải chuỗi (lỗi mạng, ...) thì dùng `fallback`.
 export function apiErrorMessage(err, fallback) {
   const message = err?.data?.message;
   const hasMessage = typeof message === 'string' && message !== '';
+  const hasVietnameseMessage = hasMessage && containsNonAscii(message);
   if (err?.status === 403) {
-    return hasMessage && containsNonAscii(message) ? message : FORBIDDEN_MESSAGE;
+    return hasVietnameseMessage ? message : FORBIDDEN_MESSAGE;
   }
+  if (err?.status === 413 || err?.originalStatus === 413) {
+    return hasVietnameseMessage ? message : FILE_TOO_LARGE_MESSAGE;
+  }
+  if (hasMessage && message.startsWith('Multipart')) return UNREADABLE_UPLOAD_MESSAGE;
   return hasMessage ? message : fallback;
 }
 
