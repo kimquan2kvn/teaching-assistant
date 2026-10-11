@@ -4,7 +4,9 @@ import { Connection, Model, Types } from 'mongoose';
 import type { UpdateLessonLogInput } from '@so-chu-nhiem/shared';
 import { LessonLog } from '../database/schemas/lesson-log.schema';
 import { PpctItem } from '../database/schemas/ppct-item.schema';
-import { minDate } from '../common/utils/date';
+import { Class } from '../database/schemas/class.schema';
+import { Position } from '../database/schemas/position.schema';
+import { addDays, minDate } from '../common/utils/date';
 import { runInTransaction } from '../common/utils/transaction';
 import { LessonLogEngineService } from './lesson-log-engine.service';
 
@@ -29,16 +31,26 @@ export interface LessonLogView {
   } | null;
 }
 
+export interface TeacherWeekPosition {
+  _id: string;
+  classId: string;
+  className: string;
+  subject: string;
+}
+
+export type TeacherWeekLogView = LessonLogView & { position: TeacherWeekPosition };
+
 @Injectable()
 export class LessonLogsService {
   constructor(
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(LessonLog.name) private readonly lessonLogModel: Model<LessonLog>,
     @InjectModel(PpctItem.name) private readonly ppctItemModel: Model<PpctItem>,
+    @InjectModel(Position.name) private readonly positionModel: Model<Position>,
+    @InjectModel(Class.name) private readonly classModel: Model<Class>,
     private readonly engine: LessonLogEngineService,
   ) {}
 
-  // 2 query (logs + mục PPCT theo id) rồi ghép trong bộ nhớ để không N+1. Cùng ngày sắp theo `order` của mục.
   async listByPosition(positionId: string, range: { from?: Date; to?: Date }): Promise<LessonLogView[]> {
     const { from, to } = range;
     if (from && to && from.getTime() > to.getTime()) {
@@ -51,15 +63,45 @@ export class LessonLogsService {
     const logs = await this.lessonLogModel
       .find(from || to ? { positionId, date: dateFilter } : { positionId })
       .exec();
-    if (logs.length === 0) return [];
+    return this.toSortedViews(logs);
+  }
 
-    const items = await this.ppctItemModel.find({ _id: { $in: logs.map((log) => log.ppctItemId) } }).exec();
-    const itemById = new Map(items.map((item) => [String(item._id), item]));
+  // Chỉ position SUBJECT mà giáo viên ĐANG giữ: GVCN (HOMEROOM) không có tiết dạy nên không có gì để xem ở lưới tuần,
+  // và log của GVBM trong lớp mình chủ nhiệm cũng không lọt vào. 2 query (position + lớp lấy tên) cho mọi vị trí.
+  async listTeacherSubjectPositions(userId: string): Promise<TeacherWeekPosition[]> {
+    const positions = await this.positionModel.find({ holderId: userId, type: 'SUBJECT' }).exec();
+    if (positions.length === 0) return [];
 
-    const orderOf = (view: LessonLogView) => view.ppctItem?.order ?? Number.MAX_SAFE_INTEGER;
-    return logs
-      .map((log) => toLessonLogView(log, itemById.get(String(log.ppctItemId))))
-      .sort((a, b) => a.date.getTime() - b.date.getTime() || orderOf(a) - orderOf(b));
+    const classes = await this.classModel.find({ _id: { $in: positions.map((position) => position.classId) } }).exec();
+    const classNameById = new Map(classes.map((klass) => [String(klass._id), klass.name]));
+    return positions.map((position) => ({
+      _id: String(position._id),
+      classId: String(position.classId),
+      className: classNameById.get(String(position.classId)) ?? '',
+      subject: position.subject ?? '',
+    }));
+  }
+
+  async listForTeacherWeek(userId: string, weekStart: Date): Promise<TeacherWeekLogView[]> {
+    return this.listForPositionsInWeek(await this.listTeacherSubjectPositions(userId), weekStart);
+  }
+
+  // `weekStart` là Thứ Hai (00:00 UTC) đã chuẩn hóa; tuần = [weekStart, weekStart + 6 ngày]. Gom theo `positionId in [...]`
+  // nên số query không phụ thuộc số position.
+  async listForPositionsInWeek(positions: TeacherWeekPosition[], weekStart: Date): Promise<TeacherWeekLogView[]> {
+    if (positions.length === 0) return [];
+
+    const logs = await this.lessonLogModel
+      .find({
+        positionId: { $in: positions.map((position) => position._id) },
+        date: { $gte: weekStart, $lte: addDays(weekStart, 6) },
+      })
+      .exec();
+    const positionById = new Map(positions.map((position) => [position._id, position]));
+    return (await this.toSortedViews(logs)).map((view) => ({
+      ...view,
+      position: positionById.get(view.positionId) as TeacherWeekPosition,
+    }));
   }
 
   // Ghi + tính lại cùng 1 transaction: tính lại lỗi thì ngày/cờ kéo tay cũng không được lưu. Chỉ đổi `done` thì
@@ -99,6 +141,19 @@ export class LessonLogsService {
     return fromDate
       ? this.engine.recalculate(positionId, fromDate)
       : this.engine.recalculateWithDefaultFrom(positionId);
+  }
+
+  // 1 query lấy mục PPCT theo id rồi ghép trong bộ nhớ để không N+1. Cùng ngày sắp theo `order` của mục.
+  private async toSortedViews(logs: LessonLog[]): Promise<LessonLogView[]> {
+    if (logs.length === 0) return [];
+
+    const items = await this.ppctItemModel.find({ _id: { $in: logs.map((log) => log.ppctItemId) } }).exec();
+    const itemById = new Map(items.map((item) => [String(item._id), item]));
+
+    const orderOf = (view: LessonLogView) => view.ppctItem?.order ?? Number.MAX_SAFE_INTEGER;
+    return logs
+      .map((log) => toLessonLogView(log, itemById.get(String(log.ppctItemId))))
+      .sort((a, b) => a.date.getTime() - b.date.getTime() || orderOf(a) - orderOf(b));
   }
 }
 

@@ -4,9 +4,10 @@ import { ClientSession, Connection, FilterQuery, Model, Types } from 'mongoose';
 import type { CreateTimetableSlotInput, UpdateTimetableSlotInput } from '@so-chu-nhiem/shared';
 import { Position } from '../database/schemas/position.schema';
 import { TimetableSlot } from '../database/schemas/timetable-slot.schema';
-import { minDate } from '../common/utils/date';
+import { addDays, formatDateOnly, minDate } from '../common/utils/date';
 import { runInTransaction } from '../common/utils/transaction';
 import { LessonLogEngineService } from '../lesson-logs/lesson-log-engine.service';
+import { LessonLogsService, TeacherWeekLogView, TeacherWeekPosition } from '../lesson-logs/lesson-logs.service';
 
 const SUBJECT_ONLY_MESSAGE = 'Chỉ vị trí giáo viên bộ môn mới có thời khóa biểu và PPCT';
 const SLOT_NOT_FOUND_MESSAGE = 'Không tìm thấy tiết trong thời khóa biểu';
@@ -21,6 +22,23 @@ interface SlotWindow {
   effectiveTo: Date | null;
 }
 
+export interface TeacherWeekSlotView {
+  _id: string;
+  positionId: string;
+  dayOfWeek: number;
+  period: number;
+  effectiveFrom: Date;
+  effectiveTo: Date | null;
+  position: TeacherWeekPosition;
+}
+
+export interface TeacherWeekView {
+  weekStart: string;
+  weekEnd: string;
+  slots: TeacherWeekSlotView[];
+  lessonLogs: TeacherWeekLogView[];
+}
+
 @Injectable()
 export class TimetableSlotsService {
   constructor(
@@ -28,6 +46,7 @@ export class TimetableSlotsService {
     @InjectModel(TimetableSlot.name) private readonly timetableSlotModel: Model<TimetableSlot>,
     @InjectModel(Position.name) private readonly positionModel: Model<Position>,
     private readonly engine: LessonLogEngineService,
+    private readonly lessonLogsService: LessonLogsService,
   ) {}
 
   // Position HOMEROOM không bao giờ có slot (mọi thao tác ghi bị từ chối) nên đọc luôn ra rỗng.
@@ -36,6 +55,18 @@ export class TimetableSlotsService {
       .find({ positionId })
       .sort({ dayOfWeek: 1, period: 1, effectiveFrom: 1, _id: 1 })
       .exec();
+  }
+
+  // Lưới tuần của giáo viên: slot + lesson log của mọi vị trí SUBJECT đang giữ (vị trí được lấy 1 lần cho cả hai).
+  // Slot hiệu lực giao với tuần [weekStart, weekEnd]: effectiveFrom <= weekEnd và (effectiveTo null hoặc >= weekStart).
+  async getMyWeek(userId: string, weekStart: Date): Promise<TeacherWeekView> {
+    const weekEnd = addDays(weekStart, 6);
+    const positions = await this.lessonLogsService.listTeacherSubjectPositions(userId);
+    const [slots, lessonLogs] = await Promise.all([
+      this.listSlotsInWeek(positions, weekStart, weekEnd),
+      this.lessonLogsService.listForPositionsInWeek(positions, weekStart),
+    ]);
+    return { weekStart: formatDateOnly(weekStart), weekEnd: formatDateOnly(weekEnd), slots, lessonLogs };
   }
 
   // Mọi thao tác ghi: kiểm tra trùng + ghi slot + tính lại sổ báo giảng cùng 1 transaction, tính lại lỗi thì slot
@@ -94,6 +125,33 @@ export class TimetableSlotsService {
       await this.engine.recalculate(String(position._id), slot.effectiveFrom, session);
       return { deleted: true as const };
     });
+  }
+
+  private async listSlotsInWeek(
+    positions: TeacherWeekPosition[],
+    weekStart: Date,
+    weekEnd: Date,
+  ): Promise<TeacherWeekSlotView[]> {
+    if (positions.length === 0) return [];
+
+    const slots = await this.timetableSlotModel
+      .find({
+        positionId: { $in: positions.map((position) => position._id) },
+        effectiveFrom: { $lte: weekEnd },
+        $or: [{ effectiveTo: null }, { effectiveTo: { $gte: weekStart } }],
+      })
+      .sort({ dayOfWeek: 1, period: 1, effectiveFrom: 1, _id: 1 })
+      .exec();
+    const positionById = new Map(positions.map((position) => [position._id, position]));
+    return slots.map((slot) => ({
+      _id: String(slot._id),
+      positionId: String(slot.positionId),
+      dayOfWeek: slot.dayOfWeek,
+      period: slot.period,
+      effectiveFrom: slot.effectiveFrom,
+      effectiveTo: slot.effectiveTo,
+      position: positionById.get(String(slot.positionId)) as TeacherWeekPosition,
+    }));
   }
 
   private assertSubjectPosition(position: Position): void {

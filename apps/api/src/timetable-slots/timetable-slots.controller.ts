@@ -1,13 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { createTimetableSlotSchema, updateTimetableSlotSchema } from '@so-chu-nhiem/shared';
 import type { CreateTimetableSlotInput, UpdateTimetableSlotInput } from '@so-chu-nhiem/shared';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ResolvedPosition } from '../common/decorators/resolved-position.decorator';
 import { RequirePositionOwner } from '../common/decorators/require-position-owner.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PositionOwnerGuard } from '../common/guards/position-owner.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { Clock } from '../common/utils/clock';
+import { resolveWeekStart } from '../common/utils/date';
 import { Position } from '../database/schemas/position.schema';
 import { TimetableSlotsService } from './timetable-slots.service';
 
@@ -46,5 +49,22 @@ export class TimetableSlotsController {
   @RequirePositionOwner('SELF')
   async remove(@ResolvedPosition() position: Position, @Param('slotId') slotId: string) {
     return this.timetableSlotsService.remove(position, slotId);
+  }
+}
+
+// Route không theo `:positionId`: kết quả tự lọc theo các vị trí SUBJECT mà người gọi đang giữ nên không cần
+// PositionOwnerGuard. Chỉ TEACHER (ADMIN/STUDENT 403).
+@Controller('timetable')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('TEACHER')
+export class TimetableMeController {
+  constructor(
+    private readonly timetableSlotsService: TimetableSlotsService,
+    private readonly clock: Clock,
+  ) {}
+
+  @Get('me')
+  async getMyWeek(@CurrentUser() user: { id: string }, @Query('weekStart') weekStart?: string) {
+    return this.timetableSlotsService.getMyWeek(user.id, resolveWeekStart(weekStart, this.clock.now()));
   }
 }

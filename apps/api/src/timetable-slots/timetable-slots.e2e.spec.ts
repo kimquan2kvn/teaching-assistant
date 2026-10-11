@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { formatDateOnly } from '../common/utils/date';
 import { LessonLogEngineService } from '../lesson-logs/lesson-log-engine.service';
+import { LessonLogsService } from '../lesson-logs/lesson-logs.service';
 import { TimetableSlotsController } from './timetable-slots.controller';
 import { TimetableSlotsService } from './timetable-slots.service';
 import { Phase3App, Phase3Session, createPhase3App } from '../../test/phase3-test-app';
@@ -28,7 +29,7 @@ describe('TimetableSlots (e2e)', () => {
     ctx = await createPhase3App({
       dbName: 'timetable_slots_e2e',
       controllers: [TimetableSlotsController],
-      providers: [TimetableSlotsService, LessonLogEngineService],
+      providers: [TimetableSlotsService, LessonLogsService, LessonLogEngineService],
     });
     engine = ctx.app.get(LessonLogEngineService);
     teacher = await ctx.register('gvbm.slots');
