@@ -37,6 +37,31 @@ describe('MongoExceptionFilter', () => {
     expect(status).toHaveBeenCalledWith(409);
   });
 
+  it('body quá lớn (PayloadTooLargeError của body-parser, không phải HttpException) -> 413 tiếng Việt, không lộ chi tiết kỹ thuật, không log như lỗi máy chủ', () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const filter = new MongoExceptionFilter();
+    const { host, status, json } = buildHost();
+    const payloadTooLarge = Object.assign(new Error('request entity too large'), {
+      status: 413,
+      statusCode: 413,
+      type: 'entity.too.large',
+      expose: true,
+      length: 150000,
+      limit: 102400,
+    });
+
+    filter.catch(payloadTooLarge, host);
+
+    expect(status).toHaveBeenCalledWith(413);
+    expect(json).toHaveBeenCalledWith({
+      statusCode: 413,
+      error: 'Payload Too Large',
+      message: 'Dữ liệu gửi lên quá lớn, vui lòng giảm bớt rồi thử lại',
+    });
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
   it('lỗi không nhận diện được -> 500 tiếng Việt chung chung, không lộ message gốc', () => {
     const filter = new MongoExceptionFilter();
     const { host, status, json } = buildHost();

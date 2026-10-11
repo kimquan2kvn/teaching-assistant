@@ -206,6 +206,23 @@ Chi tiết: `docs/superpowers/specs/2026-10-11-phase3-design.md` (đã duyệt 2
   position chưa có log, sửa/xóa mục và ADMIN tính lại không body giữ nguyên hành vi cũ. Ô trống đã có sẵn trước log
   muộn nhất (vd do xóa mục giữa chừng) vẫn không tự lấp. Muốn quay lại hành vi cũ (đã có log thì luôn từ hôm nay) chỉ
   cần revert commit này.
+- **Giới hạn body JSON và lỗi 413** (sửa sau review): Express/Nest chỉ nhận body JSON tối đa 100kb, trong khi
+  `import/commit` PPCT cho phép tới 500 dòng × (title 300 + requirement 1000 + note 500 + periodLabel 20 ký tự). PPCT cả
+  năm có "Yêu cầu cần đạt" thật dễ vượt 100kb: preview báo hợp lệ rồi commit lại hỏng, và `PayloadTooLargeError` của
+  body-parser không phải `HttpException` nên `MongoExceptionFilter` trả 500 chung chung. Đã chốt: (1) CHỈ `POST
+  /positions/:positionId/ppct/import/commit` được nâng lên 3mb (500 dòng tối đa ≈ 0,9 MB nếu toàn ASCII, ≈ 2,8 MB nếu
+  mọi ký tự là chữ tiếng Việt 3 byte UTF-8); mọi route khác giữ 100kb. Không nâng toàn cục vì body được parse TRƯỚC
+  guard đăng nhập: nâng toàn cục thì cả đăng nhập/đăng ký chưa xác thực cũng nhận body vài MB (dữ liệu trẻ vị thành
+  niên). (2) Body vượt giới hạn trả `413` kèm `Dữ liệu gửi lên quá lớn, vui lòng giảm bớt rồi thử lại` (không lộ chi tiết
+  kỹ thuật, không log như lỗi máy chủ). (3) CORS, cookie, body parser và `MongoExceptionFilter` nằm trong
+  `apps/api/src/configure-app.ts`, dùng chung cho `main.ts` và `createPhase3App` để e2e chạy đúng cấu hình production;
+  CORS phải đứng trước body parser, nếu không phản hồi 413 thiếu header CORS và trình duyệt không đọc được thông báo.
+  Cách làm: `bodyParser: false` + `app.useBodyParser('json', { limit: '3mb', type: <hàm khớp route> })` đứng trước parser
+  100kb (body-parser bỏ qua request đã được parse). Không dùng `app.use(path, json())` vì `express`/`body-parser` không
+  phải dependency trực tiếp của `apps/api` (pnpm không cho import), và Nest bỏ luôn parser mặc định nếu thấy một layer
+  tên `jsonParser`. Muốn nâng giới hạn cho route khác (vd `import-confirm` học sinh, schema cho tới 2000 dòng) thì mở
+  rộng hàm khớp route trong `configure-app.ts` kèm một test e2e. Chưa xử lý: file upload quá 5 MB (multer) vẫn trả 413
+  với message tiếng Anh `File too large`.
 - **Câu hỏi mở của plan**: câu 1–4 (không chặn slot Thứ Bảy; `fromDate` mặc định hôm nay VN + lần xếp đầu từ đầu năm
   học; không thêm `period` vào `LessonLog`; PPCT v1 chỉ thêm cuối) người dùng đã xác nhận giữ mặc định ngày
   2026-10-11 (riêng câu 2 đã được điều chỉnh cho thao tác thêm mục, xem bullet ngay trên). Câu 5 (403 tiếng Anh

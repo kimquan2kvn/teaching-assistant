@@ -1,6 +1,12 @@
 import ExcelJS from 'exceljs';
 import request from 'supertest';
-import { PPCT_IMPORT_HEADERS } from '@so-chu-nhiem/shared';
+import {
+  MAX_PPCT_IMPORT_ROWS,
+  MAX_PPCT_PERIOD_COUNT,
+  MAX_PPCT_WEEK,
+  PPCT_IMPORT_HEADERS,
+  ppctImportCommitSchema,
+} from '@so-chu-nhiem/shared';
 import { formatDateOnly } from '../common/utils/date';
 import { LessonLogEngineService } from '../lesson-logs/lesson-log-engine.service';
 import { PpctController } from './ppct.controller';
@@ -282,6 +288,46 @@ describe('Ppct import (e2e)', () => {
 
       expect(res.status).toBe(201);
       expect(await ctx.models.ppctItem.countDocuments({ positionId })).toBe(1);
+    });
+
+    describe('lô lớn: body vượt 100kb mặc định của express', () => {
+      // Độ dài tối đa của từng field theo ppctImportCommitSchema. Dùng chữ tiếng Việt 3 byte UTF-8 (không phải ASCII)
+      // để body lớn nhất có thể, vì giới hạn body tính theo byte chứ không theo số ký tự.
+      const WIDE_CHAR = 'ế';
+      const MAX_FIELD_LENGTH = { periodLabel: 20, title: 300, requirement: 1000, note: 500 };
+      const maxRow = () => ({
+        week: MAX_PPCT_WEEK,
+        periodLabel: WIDE_CHAR.repeat(MAX_FIELD_LENGTH.periodLabel),
+        title: WIDE_CHAR.repeat(MAX_FIELD_LENGTH.title),
+        periodCount: MAX_PPCT_PERIOD_COUNT,
+        requirement: WIDE_CHAR.repeat(MAX_FIELD_LENGTH.requirement),
+        note: WIDE_CHAR.repeat(MAX_FIELD_LENGTH.note),
+      });
+
+      it('fixture đúng là độ dài tối đa của schema dùng chung (nới schema thì phải xem lại giới hạn body)', () => {
+        const rows = Array.from({ length: MAX_PPCT_IMPORT_ROWS }, maxRow);
+
+        expect(ppctImportCommitSchema.safeParse({ rows }).success).toBe(true);
+        expect(ppctImportCommitSchema.safeParse({ rows: [...rows, maxRow()] }).success).toBe(false);
+        for (const field of ['periodLabel', 'title', 'requirement', 'note'] as const) {
+          const tooLong = { ...maxRow(), [field]: WIDE_CHAR.repeat(MAX_FIELD_LENGTH[field] + 1) };
+          expect(ppctImportCommitSchema.safeParse({ rows: [tooLong] }).success).toBe(false);
+        }
+      });
+
+      it('500 dòng ở độ dài tối đa của mọi field (hơn 2 MB) -> 201, lưu đủ 500 mục có order liên tiếp, nội dung không bị cắt', async () => {
+        const { positionId } = await seedToan();
+        const rows = Array.from({ length: MAX_PPCT_IMPORT_ROWS }, maxRow);
+        expect(Buffer.byteLength(JSON.stringify({ rows }))).toBeGreaterThan(2 * 1024 * 1024);
+
+        const res = await commit(teacher, positionId, rows);
+
+        expect(res.status).toBe(201);
+        expect(res.body).toHaveLength(MAX_PPCT_IMPORT_ROWS);
+        expect(await ordersOf(positionId)).toEqual(Array.from({ length: MAX_PPCT_IMPORT_ROWS }, (_, i) => i + 1));
+        const last = await ctx.models.ppctItem.findOne({ positionId, order: MAX_PPCT_IMPORT_ROWS });
+        expect(last).toMatchObject(maxRow());
+      });
     });
 
     describe('rollback khi tính lại sổ báo giảng lỗi', () => {
