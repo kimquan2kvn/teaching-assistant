@@ -141,6 +141,50 @@ describe('apiErrorMessage', () => {
     expect(apiErrorMessage({ status: 400, data: {} }, 'Lưu thất bại')).toBe('Lưu thất bại');
     expect(apiErrorMessage({ status: 400, data: null }, 'Lưu thất bại')).toBe('Lưu thất bại');
   });
+
+  describe('upload file (multer trả message tiếng Anh)', () => {
+    const FILE_TOO_LARGE = 'File quá lớn (tối đa 5MB)';
+    const UNREADABLE_UPLOAD = 'Không đọc được file tải lên, vui lòng chọn lại file';
+
+    test('413 do multer trả "File too large" (tiếng Anh) → câu cố định tiếng Việt', () => {
+      const err = { status: 413, data: { message: 'File too large' } };
+      expect(apiErrorMessage(err, 'x')).toBe(FILE_TOO_LARGE);
+    });
+
+    test('413 không có data hoặc không có message → vẫn là câu cố định, không rơi về fallback', () => {
+      expect(apiErrorMessage({ status: 413 }, 'x')).toBe(FILE_TOO_LARGE);
+      expect(apiErrorMessage({ status: 413, data: {} }, 'x')).toBe(FILE_TOO_LARGE);
+    });
+
+    test('413 do reverse proxy trả trang HTML (RTK Query báo PARSING_ERROR kèm originalStatus 413) → câu cố định', () => {
+      const err = {
+        status: 'PARSING_ERROR',
+        originalStatus: 413,
+        data: '<html><body>413 Request Entity Too Large</body></html>',
+        error: 'SyntaxError: Unexpected token < in JSON at position 0',
+      };
+      expect(apiErrorMessage(err, 'x')).toBe(FILE_TOO_LARGE);
+    });
+
+    test('413 mà backend đã trả message tiếng Việt → giữ nguyên văn (không đè bằng câu cố định)', () => {
+      const err = { status: 413, data: { message: 'Dữ liệu gửi lên quá lớn' } };
+      expect(apiErrorMessage(err, 'x')).toBe('Dữ liệu gửi lên quá lớn');
+    });
+
+    test('message tiếng Anh bắt đầu bằng "Multipart" (multipart hỏng) → câu cố định tiếng Việt, bất kể mã 400 hay 500', () => {
+      expect(apiErrorMessage({ status: 400, data: { message: 'Multipart: Boundary not found' } }, 'x')).toBe(
+        UNREADABLE_UPLOAD,
+      );
+      expect(apiErrorMessage({ status: 500, data: { message: 'Multipart: Malformed part header' } }, 'x')).toBe(
+        UNREADABLE_UPLOAD,
+      );
+    });
+
+    test('chỉ thay message BẮT ĐẦU bằng "Multipart": message khác nhắc tới chữ này vẫn giữ nguyên văn', () => {
+      const err = { status: 400, data: { message: 'Dữ liệu Multipart không hợp lệ' } };
+      expect(apiErrorMessage(err, 'x')).toBe('Dữ liệu Multipart không hợp lệ');
+    });
+  });
 });
 
 describe('canEditPosition', () => {
