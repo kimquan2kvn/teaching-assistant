@@ -441,6 +441,18 @@ describe('LessonLogs (e2e)', () => {
       expect((await logOf(itemIds[1]))).toMatchObject({ isManuallyAdjusted: true });
     });
 
+    it('không body khi mọi log đã ở quá khứ: mục chưa có log xếp từ hôm nay (01-26), không lấp ô trống đã qua', async () => {
+      const { positionId, itemIds } = await arrange();
+      await ctx.models.lessonLog.deleteOne({ ppctItemId: itemIds[4] }); // mục 5 (từng ở 01-19) chưa có log
+      ctx.clock.set('2026-01-25T03:00:00Z');
+
+      const res = await as(admin, api().post(logsUrl(positionId, '/recalculate')));
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ scheduled: 1 });
+      expect(await datesOf(itemIds)).toEqual(['2026-01-05', '2026-01-08', '2026-01-12', '2026-01-15', '2026-01-26']);
+    });
+
     it('có { fromDate: 2026-01-15 }: chỉ log từ 01-15 được xếp lại theo TKB mới', async () => {
       const { positionId, itemIds } = await arrange();
       await ctx.models.timetableSlot.deleteOne({ positionId, dayOfWeek: 5 });

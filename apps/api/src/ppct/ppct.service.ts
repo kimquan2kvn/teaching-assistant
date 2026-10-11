@@ -44,7 +44,7 @@ export class PpctService {
         [{ positionId: position._id, order: (last?.order ?? 0) + 1, ...input }],
         { session },
       );
-      await this.engine.recalculateWithDefaultFrom(String(position._id), session);
+      await this.engine.recalculateWithDefaultFrom(String(position._id), session, { appendedItems: true });
       return item;
     });
   }
@@ -65,7 +65,7 @@ export class PpctService {
         rows.map((row, index) => ({ positionId: position._id, order: baseOrder + index + 1, ...row })),
         { session },
       );
-      await this.engine.recalculateWithDefaultFrom(String(position._id), session);
+      await this.engine.recalculateWithDefaultFrom(String(position._id), session, { appendedItems: true });
       return items;
     });
   }

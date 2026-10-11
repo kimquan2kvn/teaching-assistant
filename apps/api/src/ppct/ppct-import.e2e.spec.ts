@@ -16,6 +16,9 @@ const MON_THU_SLOTS = [
   { dayOfWeek: 2, period: 1 },
   { dayOfWeek: 5, period: 3 },
 ];
+const DEFAULT_NOW = '2026-01-04T03:00:00Z';
+// Giữa năm học: các ô 01-05, 01-08, 01-12 của TKB Thứ Hai/Thứ Năm đã qua, ô tự do kế tiếp là 01-15.
+const MID_YEAR_NOW = '2026-01-14T03:00:00Z';
 
 type SheetCell = string | number | null;
 
@@ -332,6 +335,74 @@ describe('Ppct import (e2e)', () => {
 
       expect(commitRes.status).toBe(201);
       expect(await ordersOf(positionId)).toEqual([1, 2]);
+    });
+  });
+
+  describe('commit giữa năm học (hôm nay 2026-01-14, TKB khai báo từ 2026-01-05)', () => {
+    beforeEach(() => {
+      ctx.clock.set(MID_YEAR_NOW);
+    });
+
+    afterEach(() => {
+      ctx.clock.set(DEFAULT_NOW);
+    });
+
+    async function datesOf(itemIds: string[]): Promise<Array<string | null>> {
+      const logs = await ctx.models.lessonLog.find({ ppctItemId: { $in: itemIds } });
+      const byItem = new Map(logs.map((log) => [String(log.ppctItemId), formatDateOnly(log.date)]));
+      return itemIds.map((id) => byItem.get(id) ?? null);
+    }
+
+    async function snapshotOf(itemIds: string[]) {
+      const logs = await ctx.models.lessonLog.find({ ppctItemId: { $in: itemIds } });
+      const byItem = new Map(logs.map((log) => [String(log.ppctItemId), log]));
+      return itemIds.map((id) => {
+        const log = byItem.get(id);
+        return log ? { id: String(log._id), date: formatDateOnly(log.date), done: log.done } : null;
+      });
+    }
+
+    const idsOf = (res: { body: Array<{ _id: string }> }) => res.body.map((item) => item._id);
+
+    it('import cả 5 dòng vào position đã có TKB: xếp 01-05, 01-08, 01-12, 01-15, 01-19 như khi nhập từng mục', async () => {
+      const { positionId } = await seedToan();
+      await seedSlots(ctx.models, positionId, MON_THU_SLOTS);
+
+      const res = await commit(teacher, positionId, [1, 2, 3, 4, 5].map((n) => commitRow(n)));
+
+      expect(res.status).toBe(201);
+      expect(await datesOf(idsOf(res))).toEqual(MON_THU_DATES);
+    });
+
+    it('position đã có log ở quá khứ: các dòng mới nối ngay sau log cuối, log cũ không đổi', async () => {
+      const { positionId } = await seedToan();
+      await seedSlots(ctx.models, positionId, MON_THU_SLOTS);
+      const oldIds = await seedPpct(ctx.models, positionId, 2);
+      await engine.recalculate(positionId, d('2025-09-05'));
+      await ctx.models.lessonLog.updateOne({ ppctItemId: oldIds[0] }, { done: true });
+      const before = await snapshotOf(oldIds);
+      expect(before.map((log) => log?.date)).toEqual(['2026-01-05', '2026-01-08']);
+
+      const res = await commit(teacher, positionId, [commitRow(3), commitRow(4), commitRow(5)]);
+
+      expect(res.status).toBe(201);
+      expect(await datesOf(idsOf(res))).toEqual(['2026-01-12', '2026-01-15', '2026-01-19']);
+      expect(await snapshotOf(oldIds)).toEqual(before);
+    });
+
+    it('lịch đã kéo tới tương lai: các dòng mới nối đuôi từ hôm nay như cũ', async () => {
+      const { positionId } = await seedToan();
+      await seedSlots(ctx.models, positionId, MON_THU_SLOTS);
+      const oldIds = await seedPpct(ctx.models, positionId, 6);
+      await engine.recalculate(positionId, d('2025-09-05'));
+      const before = await snapshotOf(oldIds);
+      expect(before.map((log) => log?.date)).toEqual([...MON_THU_DATES, '2026-01-22']);
+
+      const res = await commit(teacher, positionId, [commitRow(7), commitRow(8)]);
+
+      expect(res.status).toBe(201);
+      expect(await datesOf(idsOf(res))).toEqual(['2026-01-26', '2026-01-29']);
+      expect(await snapshotOf(oldIds)).toEqual(before);
     });
   });
 });

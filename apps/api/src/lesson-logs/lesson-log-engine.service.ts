@@ -23,6 +23,17 @@ interface PositionYearContext {
   year: SchoolYear;
 }
 
+export interface RecalculateOptions {
+  // Giữ nguyên MỌI log hiện có (kể cả log chưa khóa từ `fromDate` trở đi): không xếp lại, không xóa, không dời; chỉ xếp
+  // các mục chưa có log vào ô tự do từ `fromDate`.
+  keepAllLogs?: boolean;
+}
+
+export interface DefaultFromOptions {
+  // true khi thao tác vừa THÊM mục PPCT mới (POST/import); sửa/xóa mục và ADMIN tính lại không body để false.
+  appendedItems?: boolean;
+}
+
 @Injectable()
 export class LessonLogEngineService {
   constructor(
@@ -40,9 +51,16 @@ export class LessonLogEngineService {
   // Không truyền session thì tự mở transaction riêng; có session thì chạy chung transaction của nơi gọi (thao tác
   // ghi TKB/PPCT/ngày nghỉ + tính lại phải cùng 1 transaction). withTransaction có thể chạy lại callback khi gặp
   // TransientTransactionError nên mọi trạng thái đều đọc lại bên trong, mọi query dùng session và chạy tuần tự.
-  async recalculate(positionId: string, fromDate: Date, session?: ClientSession): Promise<{ scheduled: number }> {
+  async recalculate(
+    positionId: string,
+    fromDate: Date,
+    session?: ClientSession,
+    options: RecalculateOptions = {},
+  ): Promise<{ scheduled: number }> {
     if (!session) {
-      return runInTransaction(this.connection, (txSession) => this.recalculate(positionId, fromDate, txSession));
+      return runInTransaction(this.connection, (txSession) =>
+        this.recalculate(positionId, fromDate, txSession, options),
+      );
     }
 
     const { position, year } = await this.loadPositionYear(positionId, session);
@@ -54,7 +72,11 @@ export class LessonLogEngineService {
     const holidays = await this.holidayModel.find({ schoolYearId: year._id }).session(session);
     const ppctItems = await this.ppctItemModel.find({ positionId: position._id }).session(session);
     const keptLogs = await this.lessonLogModel
-      .find({ positionId: position._id, $or: [{ date: { $lt: from } }, { isManuallyAdjusted: true }, { done: true }] })
+      .find(
+        options.keepAllLogs
+          ? { positionId: position._id }
+          : { positionId: position._id, $or: [{ date: { $lt: from } }, { isManuallyAdjusted: true }, { done: true }] },
+      )
       .session(session);
 
     const scheduled = computeLessonSchedule({
@@ -71,16 +93,18 @@ export class LessonLogEngineService {
     });
 
     // Log chưa khóa từ `from` trở đi mà mục không còn chỗ (hoặc không còn được xếp) thì xóa; còn lại upsert để
-    // giữ nguyên _id log mà UI đang cầm.
-    await this.lessonLogModel
-      .deleteMany({
-        positionId: position._id,
-        isManuallyAdjusted: { $ne: true },
-        done: { $ne: true },
-        date: { $gte: from },
-        ppctItemId: { $nin: scheduled.map((lesson) => new Types.ObjectId(lesson.ppctItemId)) },
-      })
-      .session(session);
+    // giữ nguyên _id log mà UI đang cầm. `keepAllLogs`: mọi log đã được giữ nên không có gì để xóa.
+    if (!options.keepAllLogs) {
+      await this.lessonLogModel
+        .deleteMany({
+          positionId: position._id,
+          isManuallyAdjusted: { $ne: true },
+          done: { $ne: true },
+          date: { $gte: from },
+          ppctItemId: { $nin: scheduled.map((lesson) => new Types.ObjectId(lesson.ppctItemId)) },
+        })
+        .session(session);
+    }
 
     if (scheduled.length > 0) {
       await this.lessonLogModel.bulkWrite(
@@ -97,15 +121,37 @@ export class LessonLogEngineService {
     return { scheduled: scheduled.length };
   }
 
-  // Position chưa có log nào (xếp lần đầu) → từ đầu năm học để thứ tự nhập PPCT/TKB không làm khác kết quả;
-  // đã có log → từ hôm nay (giờ Việt Nam) để không đụng tới các buổi đã qua.
-  async recalculateWithDefaultFrom(positionId: string, session?: ClientSession): Promise<{ scheduled: number }> {
+  // `fromDate` mặc định khi ghi PPCT:
+  // - Position chưa có log nào (xếp lần đầu) → từ đầu năm học để thứ tự nhập PPCT/TKB không làm khác kết quả.
+  // - Đã có log → từ hôm nay (giờ Việt Nam) để không đụng tới các buổi đã qua.
+  // - NGOẠI LỆ khi THÊM mục (`appendedItems`) mà mọi log đều đã ở quá khứ: nếu cũng từ hôm nay thì nhập tay từng mục
+  //   giữa năm học sẽ để ô trống vĩnh viễn ở giữa (mục 1 vào đầu năm vì chưa có log, từ mục 2 bị đẩy sang hôm nay), trong
+  //   khi nhập một lượt hoặc khai báo TKB sau PPCT thì không. Nên giữ nguyên MỌI log hiện có (không xếp lại, không xóa,
+  //   không dời) và chỉ xếp mục mới vào ô tự do từ ngày của log muộn nhất; lấy chính ngày đó (không phải ngày sau nó)
+  //   để lấp nốt tiết còn trống cùng ngày khi TKB có tiết đôi. Lịch đã kéo tới hôm nay hoặc sau đó thì vẫn từ hôm nay.
+  async recalculateWithDefaultFrom(
+    positionId: string,
+    session?: ClientSession,
+    options: DefaultFromOptions = {},
+  ): Promise<{ scheduled: number }> {
     if (!session) {
-      return runInTransaction(this.connection, (txSession) => this.recalculateWithDefaultFrom(positionId, txSession));
+      return runInTransaction(this.connection, (txSession) =>
+        this.recalculateWithDefaultFrom(positionId, txSession, options),
+      );
     }
-    const hasLogs = await this.lessonLogModel.exists({ positionId: new Types.ObjectId(positionId) }).session(session);
-    const from = hasLogs ? todayDateOnlyVN(this.clock.now()) : FROM_START_OF_YEAR;
-    return this.recalculate(positionId, from, session);
+    const latestLog = await this.lessonLogModel
+      .findOne({ positionId: new Types.ObjectId(positionId) })
+      .sort({ date: -1 })
+      .select('date')
+      .session(session);
+    if (!latestLog) return this.recalculate(positionId, FROM_START_OF_YEAR, session);
+
+    const today = todayDateOnlyVN(this.clock.now());
+    const isAllInThePast = latestLog.date.getTime() < today.getTime();
+    if (options.appendedItems && isAllInThePast) {
+      return this.recalculate(positionId, latestLog.date, session, { keepAllLogs: true });
+    }
+    return this.recalculate(positionId, today, session);
   }
 
   async recalculateSchoolYear(

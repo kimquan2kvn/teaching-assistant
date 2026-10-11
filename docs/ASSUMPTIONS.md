@@ -138,10 +138,12 @@ Chi tiết: `docs/superpowers/specs/2026-10-11-phase3-design.md` (đã duyệt 2
   năm đó, `fromDate` luôn bị kẹp `>= SchoolYear.startDate`. Trùng với năm hiện hành ở mọi luồng v1, nhưng không
   404 khi không có năm hiện hành và vẫn đúng khi sửa lớp năm cũ.
 - **`fromDate` khi tính lại theo từng thao tác**: ghi slot → `effectiveFrom` (PATCH lấy giá trị nhỏ hơn giữa cũ/mới;
-  DELETE lấy `effectiveFrom` của slot); ghi ngày nghỉ → `startDate` (PATCH lấy min cũ/mới); ghi PPCT/import → hôm nay
-  (giờ Việt Nam). NGOẠI LỆ: position chưa có log nào (xếp lần đầu) thì tính từ đầu năm học, để thứ tự nhập
-  PPCT-trước/TKB-trước không làm khác kết quả. PPCT nhập giữa năm không tự lấp các buổi đã qua ngoài lần xếp đầu;
-  ADMIN `POST .../recalculate` nhận `fromDate` tuỳ chọn (mặc định như PPCT) để xử lý.
+  DELETE lấy `effectiveFrom` của slot); ghi ngày nghỉ → `startDate` (PATCH lấy min cũ/mới); sửa/xóa mục PPCT → hôm nay
+  (giờ Việt Nam); THÊM mục PPCT (POST/import) → hôm nay, nhưng khi mọi log đã ở quá khứ thì xếp mục mới từ ngày của log
+  muộn nhất mà không đụng log nào có sẵn (xem bullet "Thêm mục PPCT khi position đã có log" ở nhóm "Phát sinh khi triển
+  khai"). NGOẠI LỆ chung cho cả ba loại ghi PPCT: position chưa có log nào (xếp lần đầu) thì tính từ đầu năm học, để
+  thứ tự nhập PPCT-trước/TKB-trước không làm khác kết quả. Sửa/xóa mục không tự lấp các buổi đã qua; ADMIN
+  `POST .../recalculate` nhận `fromDate` tuỳ chọn (không body thì như sửa/xóa mục) để xử lý.
 - **Tính lại giữ nguyên `_id` log**: không xóa-chèn lại mà xóa log chưa khóa `date >= fromDate` của mục không còn được
   xếp, rồi upsert theo `(positionId, ppctItemId)`, để id UI đang cầm không bị mồ côi sau mỗi lần tính lại.
 - **PPCT `order` do hệ thống gán**: POST luôn thêm CUỐI (`max(order)+1`), import nối tiếp sau `order` lớn nhất, PATCH
@@ -191,7 +193,21 @@ Chi tiết: `docs/superpowers/specs/2026-10-11-phase3-design.md` (đã duyệt 2
   ngày sớm nhất của log được giữ nên bài nhiều tiết đã bắt đầu trước `fromDate` vẫn chiếm các ô sau `fromDate` của nó
   (tính lại từ bất kỳ `fromDate` nào cho cùng lịch như từ đầu năm); khi tính lại, ngày nghỉ lấy cả năm học. Log chưa
   khóa ở quá khứ mà ngày của nó không còn ô (TKB đổi ngoài luồng) không chiếm ô nào; log khóa vẫn trôi sang ô kế tiếp.
+- **Thêm mục PPCT khi position đã có log** (sửa sau review): POST mục và `import/commit` xếp mục mới từ
+  `min(hôm nay VN, ngày của log muộn nhất của position)` thay vì luôn từ hôm nay. ĐÂY LÀ ĐIỀU CHỈNH so với mặc định
+  người dùng đã xác nhận cho câu hỏi mở 2 (mặc định cũ: đã có log → luôn từ hôm nay). Lý do: mặc định cũ làm hỏng luồng
+  onboarding thật giữa năm học. GVBM đã khai báo TKB rồi nhập tay từng mục PPCT thì mục 1 vào đầu năm học (lúc đó chưa
+  có log), từ mục 2 trở đi position "đã có log" nên bị đẩy sang hôm nay và để lại ô trống vĩnh viễn ở giữa (vd hôm nay
+  2026-01-14 ra 01-05, 01-15, 01-19 và bỏ trống 01-08, 01-12), trong khi import cả lô hoặc nhập PPCT trước TKB sau lại
+  ra 01-05, 01-08, 01-12. Quy tắc mới cho cùng một lịch ở cả ba cách nhập. Chỉ đổi hành vi khi mọi log đã ở quá khứ
+  (log muộn nhất < hôm nay): khi đó engine GIỮ NGUYÊN mọi log hiện có (không xếp lại, không xóa, không dời, kể cả log
+  chưa khóa) và chỉ xếp các mục chưa có log vào ô tự do từ ngày của log muộn nhất. Lấy chính ngày đó (không phải ngày
+  sau nó) để vẫn lấp nốt tiết còn trống trong cùng ngày khi TKB có tiết đôi. Lịch đã kéo tới hôm nay hoặc sau đó,
+  position chưa có log, sửa/xóa mục và ADMIN tính lại không body giữ nguyên hành vi cũ. Ô trống đã có sẵn trước log
+  muộn nhất (vd do xóa mục giữa chừng) vẫn không tự lấp. Muốn quay lại hành vi cũ (đã có log thì luôn từ hôm nay) chỉ
+  cần revert commit này.
 - **Câu hỏi mở của plan**: câu 1–4 (không chặn slot Thứ Bảy; `fromDate` mặc định hôm nay VN + lần xếp đầu từ đầu năm
   học; không thêm `period` vào `LessonLog`; PPCT v1 chỉ thêm cuối) người dùng đã xác nhận giữ mặc định ngày
-  2026-10-11. Câu 5 (403 tiếng Anh `Forbidden resource` của guard, tồn tại từ Phase 1–2) và câu 6 (`reassign` có thể
-  tạo slot trùng giờ vì kiểm tra chỉ chạy lúc ghi slot) vẫn mở, ngoài phạm vi Phase 3.
+  2026-10-11 (riêng câu 2 đã được điều chỉnh cho thao tác thêm mục, xem bullet ngay trên). Câu 5 (403 tiếng Anh
+  `Forbidden resource` của guard, tồn tại từ Phase 1–2) và câu 6 (`reassign` có thể tạo slot trùng giờ vì kiểm tra chỉ
+  chạy lúc ghi slot) vẫn mở, ngoài phạm vi Phase 3.
