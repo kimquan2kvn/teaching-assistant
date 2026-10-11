@@ -102,3 +102,24 @@ Giả định về **nghiệp vụ** (business rules) sẽ được hỏi lại 
   /positions/mine`, `GET /classes/:classId/detail`, `GET /admin/teachers/:id/positions` — thuần đọc dữ liệu,
   không thêm schema/module Mongoose mới, nhưng bắt buộc phải có thì UI mới điều hướng được theo lớp (gap này
   cũng chặn điều hướng của các module Phase 2 đã xây xong, không chỉ riêng sub-project này).
+
+## Phase 3 (backend) — lịch năm học, PPCT, TKB, engine khớp tiết, sổ báo giảng
+
+Chi tiết: `docs/superpowers/specs/2026-10-11-phase3-design.md` (đã duyệt 2026-10-11).
+
+- **TKB do GVBM tự khai báo** (người dùng chọn 2026-10-11): `TimetableSlot` do GVBM của vị trí SUBJECT (và
+  ADMIN) tạo/sửa/xóa; GVCN chỉ xem. TKB không "sinh từ PPCT" được vì PPCT không có thứ/tiết — engine rải PPCT
+  vào các slot. Phase 3 chỉ có TKB cho giáo viên; TKB cho học sinh để Phase 5.
+- **1 mục PPCT = 1 `LessonLog`** dù `periodCount > 1`: `date` là ngày của ô đầu tiên, engine chiếm đủ
+  `periodCount` ô liên tiếp (có thể tràn sang ngày kế).
+- **`LessonLog.done=true` cũng bị khóa** như `isManuallyAdjusted=true` khi tính lại — buổi đã tích "Đã thực
+  hiện" không bị dời.
+- **`Holiday` áp dụng toàn trường**, không gắn lớp/position. Thay đổi ngày nghỉ tính lại mọi position có PPCT.
+- **Slot trùng bị từ chối (409)**: cùng position trùng (thứ, tiết) có hiệu lực chồng nhau, hoặc cùng giáo viên
+  có 2 slot trùng ở 2 position khác nhau. (Yêu cầu gốc không nói; đây là ràng buộc hợp lý, bỏ được nếu thực tế
+  có dạy ghép.)
+- **Học sinh không đọc PPCT/sổ báo giảng ở Phase 3**; GVCN chỉ XEM PPCT/TKB/sổ báo giảng các môn trong lớp
+  (đúng brief), chỉ GVBM của vị trí (và ADMIN) sửa.
+- **PPCT hết ô trống đến cuối năm học**: phần dư không có `LessonLog`, không báo lỗi.
+- **Tính lại đồng bộ trong request ghi**, không có nút "Khớp tiết lại" cho giáo viên; chỉ ADMIN có endpoint
+  recalculate để sửa sự cố.

@@ -1,11 +1,7 @@
 # Phase 3 (backend) — Lịch năm học, PPCT, TKB, Engine khớp tiết, Sổ báo giảng
 
-> **TRẠNG THÁI: ĐANG BRAINSTORM, CHƯA HOÀN TẤT, CHƯA ĐƯỢC DUYỆT.**
-> File này là điểm **handoff** để tiếp tục đúng mạch trên máy khác (hoặc phiên Claude Code khác).
-> Khi mở lại: đọc `docs/PROJECT_BRIEF.md` (bối cảnh gốc dự án) + `docs/ASSUMPTIONS.md` (giả định đã
-> chốt ở các phase trước) + file này, dùng skill `superpowers:brainstorming` (nhánh **kiến trúc**), rồi
-> làm tiếp đúng mục "## Việc cần làm tiếp" ở cuối file — KHÔNG bắt đầu viết code hay viết plan trước khi
-> mục đó được hoàn tất.
+> **TRẠNG THÁI: ĐÃ DUYỆT (2026-10-11).** Plan: `docs/superpowers/plans/2026-10-11-phase3-backend.md`.
+> Giả định mục 3.2 đã được ghi vào `docs/ASSUMPTIONS.md` (mục "Phase 3 (backend)").
 
 ## 1. Tình trạng tổng dự án (tính đến 2026-10-11)
 
@@ -58,34 +54,42 @@ nếu khác, có commit mới hơn chưa được ghi vào bảng trên, đọc 
 lưới Google Calendar, màn hình PPCT, sổ báo giảng) dời sang **sub-project 5**, giống cách Phase 1/2 tách
 backend ra trước rồi mới làm UI.
 
-## 3. Quyết định đã chốt với người dùng (brainstorming, chưa ghi vào ASSUMPTIONS.md vì spec chưa duyệt)
+## 3. Quyết định
 
-1. **1 spec + 1 plan duy nhất** cho toàn bộ Phase 3 backend (không tách 3a/3b như Phase 1/2).
-2. **PPCT thuộc về từng Position** (không dùng chung PPCT giữa các lớp cùng môn) — khớp pattern
-   `TimetableSlot`/`ConductLog` đã gắn theo `positionId` xuyên suốt dự án.
-3. **TKB (`TimetableSlot`) chỉ ADMIN được tạo/sửa** — GVCN/GVBM chỉ xem vị trí mình giữ.
-4. **Kéo chỉnh tay giữ nguyên khi tính lại**: `LessonLog.isManuallyAdjusted=true` thì engine không đụng
-   vào khi tính lại, chỉ rải lại phần PPCT chưa bị chỉnh tay. Việc **tính lại chạy tự động, đồng bộ**
-   ngay trong request `POST /holidays` (ảnh hưởng mọi position có PPCT) và `PATCH /timetable-slots/:id`
-   (ảnh hưởng 1 position), không cần nút "Khớp tiết lại" riêng.
+### 3.1 Đã chốt với người dùng
 
-**Giả định đang đề xuất, CHƯA hỏi lại người dùng** (nêu rõ để người review spec biết mà chỉnh nếu sai):
-- Một `PpctItem` ứng với đúng 1 `LessonLog` dù `periodCount > 1` (bài học 2 tiết) — `LessonLog.date` là
-  ngày của ô đầu tiên bị chiếm; engine vẫn chiếm đủ `periodCount` ô liên tiếp trong chuỗi thời gian khi
-  rải, có thể tràn sang buổi/ngày kế nếu môn đó mỗi ngày chỉ có 1 tiết.
-- `LessonLog.done=true` cũng được coi là "đã khóa" giống `isManuallyAdjusted=true` khi tính lại — buổi
-  đã tích "Đã thực hiện" thì không bị dời nữa, dù không phải do GV chỉnh tay.
-- `Holiday` áp dụng toàn trường (không gắn theo lớp/position).
+1. **1 spec + 1 plan duy nhất** cho toàn bộ Phase 3 backend (không tách 3a/3b).
+2. **PPCT thuộc về từng Position** (không dùng chung giữa các lớp cùng môn).
+3. **TKB (`TimetableSlot`) do GVBM tự khai báo** cho vị trí SUBJECT mình giữ (`SELF`); ADMIN cũng sửa
+   được. GVCN chỉ xem. (Người dùng chọn phương án này ngày 2026-10-11, thay cho "chỉ ADMIN sửa".)
+4. **TKB phase này chỉ phục vụ giáo viên bộ môn.** Lưới TKB là dữ liệu dựng từ `TimetableSlot` +
+   `LessonLog` của các vị trí giáo viên đó giữ. **TKB cho học sinh làm sau (Phase 5)**: phase này không có
+   route TKB nào cho STUDENT.
+5. **Kéo chỉnh tay giữ nguyên khi tính lại**: `LessonLog.isManuallyAdjusted=true` thì engine không đụng
+   vào; chỉ rải lại phần PPCT chưa bị khóa. Tính lại chạy **tự động, đồng bộ** trong request ghi
+   (`POST/PATCH/DELETE /holidays` → mọi position có PPCT; thao tác ghi `timetable-slots` và ghi PPCT → 1
+   position). Không có nút "Khớp tiết lại" cho giáo viên.
 
-## 4. Thiết kế đã trình bày với người dùng (đang chờ xác nhận rõ ràng — xem mục 5)
+### 3.2 Giả định đề xuất (chưa được hỏi riêng; sẽ ghi vào ASSUMPTIONS.md khi spec được duyệt)
+
+- Một `PpctItem` ứng với đúng 1 `LessonLog` dù `periodCount > 1`. `LessonLog.date` là ngày của ô đầu tiên;
+  engine chiếm đủ `periodCount` ô liên tiếp trong chuỗi thời gian, có thể tràn sang buổi/ngày kế.
+- `LessonLog.done=true` cũng bị khóa như `isManuallyAdjusted=true` khi tính lại.
+- `Holiday` áp dụng toàn trường (không gắn lớp/position).
+- Một giáo viên không thể có 2 slot trùng (thứ, tiết) ở 2 position khác nhau trong khoảng hiệu lực chồng
+  nhau → 409 "Bạn đã có tiết khác vào thời điểm này". Cùng position trùng (thứ, tiết) chồng hiệu lực → 409.
+- Học sinh không đọc PPCT/sổ báo giảng ở phase này (brief chỉ liệt kê TKB lớp cho học sinh, làm ở Phase 5).
+- GVCN chỉ XEM PPCT/TKB/sổ báo giảng của các môn trong lớp (đúng brief); chỉ GVBM của vị trí đó sửa.
+
+## 4. Thiết kế
 
 ### 4.1 Kiến trúc / module
 
-Module mới trong `apps/api/src/`: `holidays` (mở rộng `school-years` sẵn có), `timetable-slots`, `ppct`,
-`lesson-logs` (chứa luôn `LessonLogEngineService` — engine khớp tiết).
+Module mới trong `apps/api/src/`: `holidays` (có thể đặt cạnh `school-years`), `timetable-slots`, `ppct`,
+`lesson-logs` (chứa `LessonLogEngineService`).
 
 ```
-Holiday (school-wide) ──┐
+Holiday (toàn trường) ──┐
                          ├──► Engine khớp tiết ──► LessonLog (date, done, isManuallyAdjusted)
 TimetableSlot (position) ┘              ▲
                                          │
@@ -94,63 +98,101 @@ PpctItem (position, order) ─────────────┘
 
 ### 4.2 Schema mới (`apps/api/src/database/schemas/`)
 
-Tham khảo schema đã có: `SchoolYear` (`name, startDate, endDate, isCurrent` — unique partial index trên
-`isCurrent`), `Semester` (`schoolYearId, term(1|2), startDate, endDate`), `SchoolConfig` (doc cấu hình
-đơn, không có `_id` cố định biết trước — đọc file schema trước khi code để lấy đúng pattern query).
+Tham khảo schema có sẵn: `SchoolYear` (`name, startDate, endDate, isCurrent`), `Semester`, `SchoolConfig`
+(doc cấu hình đơn — đọc file schema để lấy đúng pattern query).
 
 ```ts
 Holiday { schoolYearId, startDate, endDate, type: 'LE'|'DOT_XUAT'|'KHAC', name }
 // index: { schoolYearId: 1, startDate: 1 }
 
-TimetableSlot { positionId, dayOfWeek /* 2-7, Thứ Hai=2...Thứ Bảy=7 */, period, effectiveFrom, effectiveTo }
+TimetableSlot { positionId, dayOfWeek /* 2-7, Thứ Hai=2 … Thứ Bảy=7 */, period, effectiveFrom, effectiveTo }
 // index: { positionId: 1, dayOfWeek: 1, period: 1 }
-// ghi: chỉ ADMIN (PositionGuard không áp — dùng AdminGuard có sẵn từ module admin/)
 
-PpctItem { positionId, order /* thứ tự rải tiết, do hệ thống gán khi tạo/import */, week /* cột hiển thị, KHÔNG dùng để rải */, periodLabel /* "15" | "TC3" | "CĐ2" */, title, periodCount, requirement, note? }
+PpctItem { positionId, order /* thứ tự rải, hệ thống gán */, week /* hiển thị, KHÔNG dùng để rải */,
+           periodLabel /* "15" | "TC3" | "CĐ2" */, title, periodCount, requirement, note? }
 // index: unique(positionId, order)
 
 LessonLog { positionId, ppctItemId, date, isManuallyAdjusted (default false), done (default false) }
-// index: unique(positionId, ppctItemId); index: { positionId: 1, date: 1 }
+// index: unique(positionId, ppctItemId); { positionId: 1, date: 1 }
 ```
 
-`SchoolConfig` thêm field `saturdayIsSchoolDay: boolean` (default `false`) — dùng cho thẻ thống kê "số
-ngày dạy còn lại" của lịch năm học.
+`SchoolConfig` thêm `saturdayIsSchoolDay: boolean` (default `false`), dùng cho thẻ thống kê ngày dạy.
+Mongoose: dùng `MongooseSchema.Types.ObjectId` trong `@Prop`; module mới phải `imports: [DatabaseModule]`.
 
-### 4.3 Thuật toán `LessonLogEngineService.recalculate(positionId, fromDate)`
+### 4.3 Engine `LessonLogEngineService.recalculate(positionId, fromDate)`
 
-1. Lấy `TimetableSlot` đang hiệu lực của `positionId`, và `Holiday` toàn trường từ `fromDate` trở đi
-   (đến hết `SchoolYear.endDate` hiện tại).
-2. Trong `LessonLog` hiện có của `positionId` với `date >= fromDate`: **giữ nguyên** (coi là đã chiếm
-   chỗ) các bản ghi có `isManuallyAdjusted=true` **hoặc** `done=true`. Xóa phần còn lại để tính lại.
-3. Dựng danh sách (ngày, tiết) còn trống theo thứ tự thời gian từ TKB, trừ ngày rơi vào `Holiday`, trừ
-   ngày/tiết đã bị chiếm ở bước 2.
-4. Lấy `PpctItem` theo `order` tăng dần, bỏ qua các mục đã có `LessonLog` bị khóa ở bước 2 (so theo
-   `ppctItemId`), rải lần lượt vào danh sách ô trống — mỗi mục chiếm `periodCount` ô liên tiếp.
-5. Ghi `LessonLog` mới (bulk insert) cho phần vừa rải; `date` = ngày của ô đầu tiên bị chiếm.
+1. Lấy `TimetableSlot` đang hiệu lực của `positionId` và `Holiday` từ `fromDate` đến hết
+   `SchoolYear.endDate` hiện tại.
+2. Giữ nguyên `LessonLog` có `date >= fromDate` và (`isManuallyAdjusted=true` hoặc `done=true`) — coi là đã
+   chiếm chỗ. Xóa phần còn lại để tính lại.
+3. Dựng danh sách ô (ngày, tiết) trống theo thời gian từ TKB, trừ ngày thuộc `Holiday`, trừ ô đã bị chiếm.
+4. Lấy `PpctItem` theo `order` tăng dần, bỏ các mục đã có `LessonLog` bị khóa, rải lần lượt, mỗi mục chiếm
+   `periodCount` ô liên tiếp.
+5. Bulk insert `LessonLog` mới; `date` = ngày của ô đầu tiên. Toàn bộ chạy trong transaction.
+6. Phần PPCT không còn ô trống đến hết năm học: không tạo `LessonLog`, không báo lỗi.
 
-**Trigger**: `PositionsController`/`HolidaysController` gọi `recalculate()` đồng bộ ngay trong handler
-của `POST /holidays` (lặp qua MỌI position đang có ≥1 `PpctItem` trong trường) và
-`PATCH /timetable-slots/:id` (chỉ 1 position, `fromDate` = `effectiveFrom` mới của slot vừa sửa).
+"Hôm nay"/`fromDate` mặc định tính theo giờ địa phương (`getFullYear()/getMonth()/getDate()`), không dùng
+`toISOString().slice(0,10)`.
 
-### 4.4 Phần CHƯA trình bày (API endpoints chi tiết + bảng phân quyền) — việc tiếp theo, xem mục 5
+### 4.4 API và phân quyền
 
-## 5. Việc cần làm tiếp (theo đúng skill `superpowers:brainstorming`, nhánh kiến trúc)
+Mọi route: `JwtAuthGuard + RolesGuard`; route theo vị trí thêm `PositionOwnerGuard` (ADMIN được bỏ qua).
+`SubscriptionGuard` thuộc Phase 6, chưa áp dụng.
 
-- [ ] Trình bày **API endpoints + bảng phân quyền** (REST route cho từng module 4.2, ai gọi được —
-  ADMIN/GVCN/GVBM/ANY — theo đúng mô hình Position+Guard đã dùng xuyên suốt dự án) — **CHƯA làm**.
-- [ ] Trình bày **error handling + testing strategy** tóm tắt (đặc biệt: enumerate rõ ≥10 kịch bản test
-  engine theo yêu cầu gốc, dùng `mongodb-memory-server` replica set như Phase 1).
-- [ ] Hỏi lại người dùng 2 giả định ở mục 3 nếu thấy cần (hiện đang để mặc định hợp lý, không chặn tiến
-  độ — chỉ hỏi nếu người review thấy rủi ro nghiệp vụ thật).
-- [ ] Viết toàn bộ spec hoàn chỉnh vào **chính file này** (thay phần "TRẠNG THÁI" ở đầu bằng
-  "ĐÃ DUYỆT") sau khi người dùng xác nhận từng phần.
-- [ ] Spec self-review (placeholder/mâu thuẫn/phạm vi/mơ hồ) theo skill.
-- [ ] Người dùng duyệt file spec cuối cùng.
-- [ ] Dùng skill `superpowers:writing-plans` viết plan vào `docs/superpowers/plans/2026-10-11-phase3-backend.md`.
-- [ ] Người dùng chọn cách thực thi (đã luôn dùng mô hình multi-agent orchestrator ở các sub-project
-  trước — khả năng cao tiếp tục vậy) rồi mới bắt đầu code thật (TDD, theo đúng flow ở mục 1).
+| Route | Ai gọi được |
+|---|---|
+| `GET /school-years/:id/holidays` | Mọi user đăng nhập |
+| `GET /school-years/:id/calendar-stats` (tổng nghỉ, nghỉ lễ, nghỉ đột xuất, số ngày dạy còn lại) | Mọi user đăng nhập |
+| `POST /holidays`, `PATCH /holidays/:id`, `DELETE /holidays/:id` | ADMIN; tính lại mọi position có PPCT |
+| `GET /positions/:positionId/timetable-slots` | `SELF_OR_HOMEROOM` |
+| `POST /positions/:positionId/timetable-slots`, `PATCH/DELETE .../:slotId` | `SELF` (GVBM) + ADMIN; tính lại 1 position từ `effectiveFrom` |
+| `GET /timetable/me?weekStart=` (lưới tuần: slot + lesson log của mọi vị trí SUBJECT giáo viên giữ) | TEACHER |
+| `GET /positions/:positionId/ppct` | `SELF_OR_HOMEROOM` |
+| `POST/PATCH/DELETE /positions/:positionId/ppct[/:itemId]` | `SELF` + ADMIN; tính lại 1 position |
+| `POST /positions/:positionId/ppct/import/preview`, `.../import/commit` | `SELF` + ADMIN (pattern import học sinh Phase 1) |
+| `GET /positions/:positionId/lesson-logs?from&to` | `SELF_OR_HOMEROOM` |
+| `PATCH /positions/:positionId/lesson-logs/:id` (đổi ngày → `isManuallyAdjusted=true`; tích `done`) | `SELF` + ADMIN |
+| `POST /positions/:positionId/lesson-logs/recalculate` (sửa sự cố) | ADMIN |
+| `GET /lesson-logs/week?weekStart=` (sổ báo giảng mọi lớp của giáo viên đang đăng nhập) | TEACHER, tự lọc theo vị trí mình giữ |
 
-**KHÔNG bỏ qua các bước trên dù máy khác/phiên khác muốn "code nhanh"** — Phase 3 có engine khớp tiết là
-phần rủi ro nghiệp vụ cao nhất dự án, spec/plan rõ ràng trước khi code là bắt buộc theo quy tắc của
-chính dự án này (`CLAUDE.md`: "Nếu gặp điểm mơ hồ thì ghi giả định vào docs/ASSUMPTIONS.md, đừng tự bịa
-nghiệp vụ").
+STUDENT: không route nào ở bảng trên (kể cả TKB lớp) — làm ở Phase 5.
+
+### 4.5 Lỗi (tiếng Việt, qua filter có sẵn)
+
+- Ngày nghỉ `endDate < startDate` → 400. Đổi ngày thủ công vào ngày nghỉ hoặc ngày/tiết không có trong TKB
+  → 400 "Ngày này không có tiết của môn". Ô đã bị `LessonLog` khác chiếm → 409. Slot trùng → 409 (mục 3.2).
+- Dữ liệu vị trí khác / không có quyền → 403.
+
+### 4.6 Chiến lược test
+
+`mongodb-memory-server` replica set như Phase 1. Test engine thuần (không DB) trước, rồi e2e với guard.
+
+Engine ≥ 12 kịch bản:
+1. Rải cơ bản: 5 mục PPCT, môn 2 tiết/tuần, không ngày nghỉ.
+2. Nghỉ giữa tuần: 1 ngày lễ trùng 1 tiết, PPCT dồn lùi 1 ô.
+3. Nghỉ nhiều ngày liên tiếp (cả tuần bão lũ).
+4. Thêm ngày nghỉ sau khi đã rải: chỉ tính lại từ `fromDate`, phần trước không đổi.
+5. Đổi TKB: tính lại từ `effectiveFrom` mới.
+6. Số tiết/tuần đổi theo giai đoạn (2 rồi 3 tiết/tuần).
+7. Tiết TC xen kẽ CK (`1,2,TC1,3`): giữ đúng thứ tự `order`.
+8. Tiết CĐ xen kẽ; `periodLabel` không ảnh hưởng thuật toán.
+9. `periodCount=2` chiếm 2 ô liên tiếp, kể cả tràn sang ngày kế.
+10. `isManuallyAdjusted=true` giữ nguyên khi tính lại; phần còn lại rải quanh nó.
+11. `done=true` bị khóa, không bị dời.
+12. PPCT dài hơn số ô còn lại đến hết năm học: phần dư không có `LessonLog`, không lỗi.
+
+Bổ sung: tính lại idempotent; Thứ Bảy bật/tắt; slot trùng → 409; phân quyền từng hàng ở 4.4 (GVBM môn khác
+403, GVCN sửa PPCT/slot 403, STUDENT 403 mọi route, ADMIN được); hiệu năng: đọc sổ báo giảng cả học kỳ
+< 2 giây, tính lại < 5 giây (1 test dữ liệu lớn).
+
+## 5. Việc còn lại
+
+- [x] Trình bày API + phân quyền, lỗi, chiến lược test (đã xong, đã điều chỉnh theo mục 3.1).
+- [x] Người dùng duyệt file spec này (2026-10-11).
+- [x] Thêm giả định mục 3.2 vào `docs/ASSUMPTIONS.md`.
+- [ ] Viết plan bằng `superpowers:writing-plans` → `docs/superpowers/plans/2026-10-11-phase3-backend.md`.
+- [ ] Người dùng chọn cách thực thi, rồi code theo TDD.
+
+Giữ nguyên quy tắc dự án: không code trước khi spec và plan được duyệt (`CLAUDE.md`: gặp điểm mơ hồ thì
+ghi giả định vào `docs/ASSUMPTIONS.md`, đừng tự bịa nghiệp vụ). UI (lưới TKB Google Calendar, màn hình
+PPCT, sổ báo giảng) thuộc sub-project 5.
