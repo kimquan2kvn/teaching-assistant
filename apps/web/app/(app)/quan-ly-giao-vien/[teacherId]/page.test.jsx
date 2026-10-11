@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TeacherPositionsPage from './page';
 
@@ -71,6 +71,16 @@ test('hiện danh sách vị trí: tên lớp + loại vị trí/môn', () => {
   expect(screen.getByText('Chủ nhiệm')).toBeInTheDocument();
   expect(screen.getByText('11B2')).toBeInTheDocument();
   expect(screen.getByText('Toán')).toBeInTheDocument();
+});
+
+test('mỗi thẻ vị trí có link "Xem lớp" trỏ đúng /lop-hoc/{class.id} của chính lớp đó', () => {
+  renderPage();
+
+  // Gắn theo từng thẻ (không theo thứ tự) để bắt lỗi dùng nhầm id của thẻ khác.
+  const homeroomCard = screen.getByText('10A1').closest('li');
+  const subjectCard = screen.getByText('11B2').closest('li');
+  expect(within(homeroomCard).getByRole('link', { name: 'Xem lớp' })).toHaveAttribute('href', '/lop-hoc/class-1');
+  expect(within(subjectCard).getByRole('link', { name: 'Xem lớp' })).toHaveAttribute('href', '/lop-hoc/class-2');
 });
 
 test('dialog gán lại KHÔNG hiện chính giáo viên đang xem trang trong danh sách chọn', async () => {

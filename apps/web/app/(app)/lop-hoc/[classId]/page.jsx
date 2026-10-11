@@ -10,13 +10,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
-// 5 trang con Phase 2 của 1 lớp cụ thể — nơi người dùng THỰC SỰ đi vào sau khi chọn lớp từ /lop-hoc.
+// Các trang con của 1 lớp cụ thể (5 trang Phase 2 + 3 trang Phase 3 theo môn-lớp) — nơi người dùng THỰC SỰ đi vào
+// sau khi chọn lớp từ /lop-hoc.
 const CLASS_FEATURE_TABS = [
   { label: 'Điểm danh', segment: 'diem-danh' },
   { label: 'Vi phạm & điểm cộng', segment: 'vi-pham' },
   { label: 'Xếp loại rèn luyện', segment: 'xep-loai' },
   { label: 'Chép phạt', segment: 'chep-phat' },
   { label: 'Bảng điều khiển', segment: 'bang-dieu-khien' },
+  { label: 'Phân phối chương trình', segment: 'ppct' },
+  { label: 'Thời khóa biểu môn', segment: 'thoi-khoa-bieu' },
+  { label: 'Sổ báo giảng', segment: 'so-bao-giang' },
 ];
 
 // HOMEROOM không có subject (chỉ 1 vị trí/lớp) nên hiện nhãn cố định "Chủ nhiệm"; SUBJECT hiện thẳng tên môn

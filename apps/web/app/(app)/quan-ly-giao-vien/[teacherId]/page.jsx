@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useGetTeacherPositionsQuery, useGetTeachersQuery } from '@/lib/store/admin-api';
 import { useReassignPositionMutation } from '@/lib/store/positions-api';
 import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -82,15 +83,18 @@ export default function TeacherPositionsPage({ params }) {
               <li key={position.id} className="rounded-lg border border-border p-4">
                 <p className="font-heading text-lg font-semibold">{position.class.name}</p>
                 <p className="mt-1 text-sm text-fg-muted">{positionTypeLabel(position)}</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => openReassignDialog(position)}
-                >
-                  Gán lại cho giáo viên khác
-                </Button>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {/* ADMIN không có API liệt kê lớp nên đây là lối vào duy nhất tới các trang theo lớp. */}
+                  <Link
+                    href={`/lop-hoc/${position.class.id}`}
+                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                  >
+                    Xem lớp
+                  </Link>
+                  <Button type="button" variant="outline" size="sm" onClick={() => openReassignDialog(position)}>
+                    Gán lại cho giáo viên khác
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>

@@ -4,8 +4,10 @@ import {
   Users,
   BookOpen,
   CalendarDays,
+  CalendarRange,
   ClipboardCheck,
   AlertTriangle,
+  NotebookPen,
   NotebookText,
   ListChecks,
   Settings,
@@ -29,9 +31,13 @@ export const NAV_GROUPS = [
   },
   {
     group: 'Kế hoạch dạy học',
+    // TKB và sổ báo giảng theo giáo viên: backend (/timetable/me, /lesson-logs/week) chỉ cho TEACHER, ADMIN bị 403
+    // nên không có mục ở đây — ADMIN xem theo lớp qua /lop-hoc/[classId]/{thoi-khoa-bieu,so-bao-giang}.
     items: [
-      { label: 'Phân phối chương trình', href: '/dang-phat-trien', icon: BookOpen },
-      { label: 'Thời khóa biểu', href: '/dang-phat-trien', icon: CalendarDays },
+      { label: 'Lịch năm học', href: '/lich-nam-hoc', icon: CalendarRange, roles: ['TEACHER', 'ADMIN'] },
+      { label: 'Phân phối chương trình', href: '/phan-phoi-chuong-trinh', icon: BookOpen, roles: ['TEACHER', 'ADMIN'] },
+      { label: 'Thời khóa biểu', href: '/thoi-khoa-bieu', icon: CalendarDays, roles: ['TEACHER'] },
+      { label: 'Sổ báo giảng', href: '/so-bao-giang', icon: NotebookPen, roles: ['TEACHER'] },
     ],
   },
   {
