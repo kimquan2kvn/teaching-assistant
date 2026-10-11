@@ -49,6 +49,27 @@ export class PpctService {
     });
   }
 
+  // Import all-or-nothing: cả lô + tính lại chung 1 transaction, `order` nối tiếp sau max hiện có. Hai import đồng
+  // thời xử lý như create(): unique (positionId, order) làm lượt đến sau WriteConflict rồi chạy lại.
+  async importCommit(position: Position, rows: CreatePpctItemInput[]): Promise<PpctItem[]> {
+    this.assertSubjectPosition(position);
+
+    return runInTransaction(this.connection, async (session) => {
+      const last = await this.ppctItemModel
+        .findOne({ positionId: position._id })
+        .sort({ order: -1 })
+        .select('order')
+        .session(session);
+      const baseOrder = last?.order ?? 0;
+      const items = await this.ppctItemModel.insertMany(
+        rows.map((row, index) => ({ positionId: position._id, order: baseOrder + index + 1, ...row })),
+        { session },
+      );
+      await this.engine.recalculateWithDefaultFrom(String(position._id), session);
+      return items;
+    });
+  }
+
   // `order` không nằm trong updatePpctItemSchema nên PATCH không bao giờ đổi thứ tự.
   async update(position: Position, itemId: string, input: UpdatePpctItemInput): Promise<PpctItem> {
     this.assertSubjectPosition(position);
