@@ -4,8 +4,8 @@ import { cn } from '@/lib/utils';
 export const badgeVariants = cva('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', {
   variants: {
     variant: {
-      success: 'bg-success/10 text-success',
-      danger: 'bg-danger/10 text-danger',
+      success: 'bg-success-soft text-success',
+      danger: 'bg-danger-soft text-danger',
       muted: 'bg-black/5 text-fg-muted',
     },
   },

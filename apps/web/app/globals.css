@@ -5,6 +5,7 @@
 :root {
   --brand: #f0b90b;
   --brand-hover: #d0980b;
+  --brand-soft: #fdf7e2;
   --sidebar-bg: #1e2329;
   --sidebar-fg: #b7bdc6;
   --sidebar-active-fg: #f0b90b;
@@ -12,7 +13,9 @@
   --fg: #1e2329;
   --fg-muted: #848e9c;
   --success: #0ecb81;
+  --success-soft: #e7faf2;
   --danger: #f6465d;
+  --danger-soft: #feedef;
 }
 
 body {

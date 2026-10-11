@@ -114,7 +114,7 @@ export default function ThamGiaLopPage() {
             className={cn(
               'rounded-md border border-border px-3 py-2 text-left text-sm',
               homeroomTaken ? 'cursor-not-allowed text-fg-muted opacity-50' : 'hover:bg-black/5',
-              selectedType === 'HOMEROOM' && 'border-brand bg-brand/10',
+              selectedType === 'HOMEROOM' && 'border-brand bg-brand-soft',
             )}
           >
             Làm GVCN
@@ -135,7 +135,7 @@ export default function ThamGiaLopPage() {
                   className={cn(
                     'rounded-md border border-border px-3 py-2 text-left text-sm',
                     taken ? 'cursor-not-allowed text-fg-muted opacity-50' : 'hover:bg-black/5',
-                    isSelected && 'border-brand bg-brand/10',
+                    isSelected && 'border-brand bg-brand-soft',
                   )}
                 >
                   {subject}

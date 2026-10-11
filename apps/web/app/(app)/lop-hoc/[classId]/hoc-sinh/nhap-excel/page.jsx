@@ -103,7 +103,7 @@ export default function NhapExcelPage({ params }) {
                 return (
                   <tr
                     key={row.rowNumber}
-                    className={rowHasErrors ? 'border-b border-border bg-danger/10' : 'border-b border-border'}
+                    className={rowHasErrors ? 'border-b border-border bg-danger-soft' : 'border-b border-border'}
                   >
                     <td className="py-2">{row.rowNumber}</td>
                     <td className="py-2">{row.fullName}</td>

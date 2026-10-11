@@ -6,6 +6,7 @@ module.exports = {
       colors: {
         brand: 'var(--brand)',
         'brand-hover': 'var(--brand-hover)',
+        'brand-soft': 'var(--brand-soft)',
         'sidebar-bg': 'var(--sidebar-bg)',
         'sidebar-fg': 'var(--sidebar-fg)',
         'sidebar-active-fg': 'var(--sidebar-active-fg)',
@@ -13,7 +14,9 @@ module.exports = {
         fg: 'var(--fg)',
         'fg-muted': 'var(--fg-muted)',
         success: 'var(--success)',
+        'success-soft': 'var(--success-soft)',
         danger: 'var(--danger)',
+        'danger-soft': 'var(--danger-soft)',
       },
       fontFamily: {
         sans: 'var(--font-sans)',

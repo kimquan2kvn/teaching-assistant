@@ -114,7 +114,7 @@ export function ConductLogFormDialog({ open, onOpenChange, classId }) {
 
         {result ? (
           <div>
-            <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
+            <div className="rounded-md bg-danger-soft p-3 text-sm text-danger">
               <p className="font-medium">Đã tự tạo {result.punishments.length} chép phạt</p>
               <ul className="mt-1 list-disc pl-4">
                 {result.punishments.map((p) => (
@@ -201,7 +201,7 @@ export function ConductLogFormDialog({ open, onOpenChange, classId }) {
                         onClick={() => setCatalogItemId(item._id)}
                         className={cn(
                           'w-full rounded-md border border-border px-3 py-2 text-left text-sm hover:bg-black/5',
-                          catalogItemId === item._id && 'border-brand bg-brand/10',
+                          catalogItemId === item._id && 'border-brand bg-brand-soft',
                         )}
                       >
                         {item.label} ({item.kind === 'VIOLATION' ? '-' : '+'}
