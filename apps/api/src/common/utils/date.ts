@@ -42,3 +42,34 @@ export function addDays(date: Date, days: number): Date {
   result.setUTCDate(result.getUTCDate() + days);
   return result;
 }
+
+// "Hôm nay" theo lịch Việt Nam, trả 00:00 UTC của ngày đó để so sánh trực tiếp với các ngày lưu dạng date-only.
+// Không dùng getter giờ địa phương của server (container thường chạy UTC) — cộng cố định UTC+7.
+export function todayDateOnlyVN(now: Date = new Date()): Date {
+  const shifted = new Date(now.getTime() + VIETNAM_UTC_OFFSET_MS);
+  return new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()));
+}
+
+// Thứ Hai = 2 ... Thứ Bảy = 7, Chủ Nhật = 1 (= getUTCDay() + 1); đúng quy ước dayOfWeek của TimetableSlot.
+export function toVnDayOfWeek(date: Date): number {
+  return date.getUTCDay() + 1;
+}
+
+export function formatDateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+export function maxDate(a: Date, b: Date): Date {
+  return a.getTime() >= b.getTime() ? a : b;
+}
+
+export function minDate(a: Date, b: Date): Date {
+  return a.getTime() <= b.getTime() ? a : b;
+}
+
+export function resolveWeekStart(raw: string | undefined, now: Date): Date {
+  if (!raw) {
+    return getIsoWeekStart(todayDateOnlyVN(now));
+  }
+  return getIsoWeekStart(parseDateOnly(raw));
+}
