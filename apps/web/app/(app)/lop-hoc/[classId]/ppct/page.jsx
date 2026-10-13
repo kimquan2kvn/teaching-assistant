@@ -8,11 +8,21 @@ import { useDeletePpctItemMutation, useGetPositionPpctQuery } from '@/lib/store/
 import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { PpctItemDialog } from '@/components/schedule/ppct-item-dialog';
 import { useSelectedPosition } from '@/components/schedule/use-selected-position';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogHeader,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getPeriodKind } from '@/lib/ppct';
 import { apiErrorMessage, canEditPosition, cn, getReadableSubjectPositions } from '@/lib/utils';
 
@@ -60,35 +70,35 @@ function MobileDetails({ requirement, note }) {
 
 function PpctTable({ items, canEdit, onEdit, onDelete }) {
   return (
-    <div className="mt-4 overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-fg-muted">
-            <th className="py-2 pr-4">Tuần</th>
-            <th className="py-2 pr-4">Bài học</th>
-            <th className="py-2 pr-4">Số tiết</th>
-            <th className="py-2 pr-4">Tiết thứ</th>
-            <th className={cn('py-2 pr-4', LONG_COLUMN)}>Yêu cầu cần đạt</th>
-            <th className={cn('py-2 pr-4', LONG_COLUMN)}>Ghi chú</th>
-            {canEdit && <th className="py-2 pr-4">Hành động</th>}
-          </tr>
-        </thead>
-        <tbody>
+    <div className="mt-4">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Tuần</TableHead>
+            <TableHead>Bài học</TableHead>
+            <TableHead>Số tiết</TableHead>
+            <TableHead>Tiết thứ</TableHead>
+            <TableHead className={LONG_COLUMN}>Yêu cầu cần đạt</TableHead>
+            <TableHead className={LONG_COLUMN}>Ghi chú</TableHead>
+            {canEdit && <TableHead>Hành động</TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {items.map((item) => (
-            <tr key={item._id} className="border-t border-border align-top">
-              <td className="py-2 pr-4 font-mono">{item.week}</td>
-              <td className="py-2 pr-4">
+            <TableRow key={item._id}>
+              <TableCell className="align-top font-mono">{item.week}</TableCell>
+              <TableCell className="align-top">
                 {item.title}
                 <MobileDetails requirement={item.requirement} note={item.note} />
-              </td>
-              <td className="py-2 pr-4 font-mono">{item.periodCount}</td>
-              <td className="py-2 pr-4">
+              </TableCell>
+              <TableCell className="align-top font-mono">{item.periodCount}</TableCell>
+              <TableCell className="align-top">
                 <PeriodLabel label={item.periodLabel} />
-              </td>
-              <td className={cn('whitespace-pre-line py-2 pr-4', LONG_COLUMN)}>{item.requirement}</td>
-              <td className={cn('whitespace-pre-line py-2 pr-4', LONG_COLUMN)}>{item.note}</td>
+              </TableCell>
+              <TableCell className={cn('whitespace-pre-line align-top', LONG_COLUMN)}>{item.requirement}</TableCell>
+              <TableCell className={cn('whitespace-pre-line align-top', LONG_COLUMN)}>{item.note}</TableCell>
               {canEdit && (
-                <td className="py-2 pr-4">
+                <TableCell className="align-top">
                   <div className="flex gap-2">
                     <Button type="button" size="sm" variant="outline" onClick={() => onEdit(item)}>
                       Sửa
@@ -103,12 +113,12 @@ function PpctTable({ items, canEdit, onEdit, onDelete }) {
                       Xóa
                     </Button>
                   </div>
-                </td>
+                </TableCell>
               )}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -117,9 +127,9 @@ function PpctTable({ items, canEdit, onEdit, onDelete }) {
 function PpctContent({ items, isError, error, canEdit, onEdit, onDelete }) {
   if (isError) {
     return (
-      <p role="alert" className="mt-4 text-sm text-danger">
-        {apiErrorMessage(error, 'Không tải được PPCT, vui lòng thử lại')}
-      </p>
+      <Alert variant="destructive" className="mt-4">
+        <AlertDescription>{apiErrorMessage(error, 'Không tải được PPCT, vui lòng thử lại')}</AlertDescription>
+      </Alert>
     );
   }
   if (items === undefined) {
@@ -157,16 +167,18 @@ function DeletePpctItemDialog({ positionId, item, onClose }) {
 
   return (
     <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)]">
-        <DialogTitle>Xóa mục PPCT?</DialogTitle>
-        <p className="mt-2 text-sm">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Xóa mục PPCT?</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm">
           Mục: <span className="font-medium">{item.title}</span>
         </p>
-        <p className="mt-2 text-sm text-fg-muted">{DELETE_WARNING}</p>
+        <DialogDescription>{DELETE_WARNING}</DialogDescription>
         {error && (
-          <p role="alert" className="mt-2 text-sm text-danger">
-            {error}
-          </p>
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
         <DialogFooter>
           <DialogClose asChild>
