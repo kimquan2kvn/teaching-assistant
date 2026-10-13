@@ -2,7 +2,9 @@
 
 import { useId, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSelector } from 'react-redux';
 import { useGetTeacherWeekLessonLogsQuery } from '@/lib/store/lesson-logs-api';
+import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { useGetMyPositionsQuery } from '@/lib/store/positions-api';
 import { RoleGate } from '@/components/layout/role-gate';
 import { Label } from '@/components/ui/label';
@@ -31,14 +33,23 @@ function PageNotice({ children }) {
 }
 
 function TeacherOnlyNotice() {
+  const currentUser = useSelector(selectCurrentUser);
+
   return (
     <PageNotice>
       <p className="mt-2 text-sm text-fg-muted">
         Sổ báo giảng tổng hợp chỉ dành cho giáo viên. Quản trị viên xem sổ báo giảng từng môn ở trang chi tiết lớp.
       </p>
-      <Link href="/lop-hoc" className="mt-4 inline-block text-sm font-medium text-brand hover:underline">
-        Đến danh sách lớp
-      </Link>
+      {/* ADMIN không giữ vị trí nào nên /lop-hoc là ngõ cụt; lớp của ADMIN đi qua Quản lý giáo viên. Học sinh không có
+          trang nào của giáo viên để đến. */}
+      {currentUser?.role === 'ADMIN' && (
+        <Link
+          href="/quan-ly-giao-vien"
+          className="mt-4 inline-block text-sm font-medium text-brand hover:underline"
+        >
+          Đến quản lý giáo viên
+        </Link>
+      )}
     </PageNotice>
   );
 }
@@ -70,7 +81,9 @@ function TeacherLessonLogs() {
     [weekLogs, activeFilterId],
   );
 
-  const actions = useLessonLogActions({ isRefreshing: Boolean(weekQuery.isFetching) });
+  const actions = useLessonLogActions({
+    listFetch: { isFetching: Boolean(weekQuery.isFetching), startedTimeStamp: weekQuery.startedTimeStamp },
+  });
   const flow = useMoveLogFlow(actions);
 
   if (positionsQuery.isLoading) {

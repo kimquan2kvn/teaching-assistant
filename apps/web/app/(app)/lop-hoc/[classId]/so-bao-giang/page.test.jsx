@@ -164,15 +164,14 @@ describe('chế độ "Theo tuần"', () => {
     expect(column('2026-01-18').querySelector('[data-log-id="sun"]')).not.toBeNull();
   });
 
-  test('(e) rỗng → hiện câu giải thích đúng chữ', () => {
+  test('(e) tuần rỗng → câu theo tuần (không bảo nhập PPCT/TKB khi chỉ là tuần nghỉ)', () => {
     getLogsMock.mockReturnValue(queryResult([]));
     renderPage();
 
     expect(
-      screen.getByText(
-        'Chưa có buổi báo giảng nào. Hãy nhập PPCT và khai báo thời khóa biểu của môn để hệ thống tự xếp ngày dạy.',
-      ),
+      screen.getByText('Tuần này không có buổi học nào. Kiểm tra PPCT và thời khóa biểu của môn nếu bạn mong đợi có buổi.'),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Chưa có buổi báo giảng nào/)).not.toBeInTheDocument();
   });
 });
 
@@ -557,11 +556,13 @@ describe('tích "Đã thực hiện"', () => {
 
   test('lưu xong mà danh sách đang tải lại: checkbox giữ trạng thái đã tích (không nháy về giá trị cũ)', async () => {
     let isRefetching = false;
-    getLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching }));
+    let refetchStartedAt;
+    getLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching, startedTimeStamp: refetchStartedAt }));
     updateLessonLogMock.mockImplementation(() => ({
       unwrap: () => {
         // RTK Query bắt đầu tải lại danh sách ngay khi mutation hoàn tất (invalidatesTags).
         isRefetching = true;
+        refetchStartedAt = Date.now();
         return Promise.resolve({});
       },
     }));
@@ -577,10 +578,12 @@ describe('tích "Đã thực hiện"', () => {
 
   test('tải lại xong thì theo dữ liệu từ backend, giá trị dự định không bị giữ mãi', async () => {
     let isRefetching = false;
-    getLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching }));
+    let refetchStartedAt;
+    getLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching, startedTimeStamp: refetchStartedAt }));
     updateLessonLogMock.mockImplementation(() => ({
       unwrap: () => {
         isRefetching = true;
+        refetchStartedAt = Date.now();
         return Promise.resolve({});
       },
     }));

@@ -153,6 +153,17 @@ describe('useLessonLogActions: chuyển ngày', () => {
 });
 
 describe('useLessonLogActions: lỗi và gửi trùng', () => {
+  test('error kèm errorLogId của đúng buổi bị lỗi (để hộp thoại của buổi khác không hiện nhầm)', async () => {
+    rejectWith({ status: 400, data: { message: 'Ngày này không có tiết của môn' } });
+    const { result } = renderHook(() => useLessonLogActions());
+
+    await act(async () => {
+      await result.current.moveLog(OTHER_LOG, '2026-01-22');
+    });
+
+    expect(result.current.errorLogId).toBe('l2');
+  });
+
   test('clearError() xóa error', async () => {
     rejectWith({ status: 409, data: { message: 'Ngày này đã có buổi học khác, không thể chuyển vào' } });
     const { result } = renderHook(() => useLessonLogActions());
@@ -489,5 +500,113 @@ describe('useMoveLogFlow', () => {
 
     expect(actions.toggleDone).toHaveBeenCalledWith(LOG, true);
     expect(result.current.notice).toBeNull();
+  });
+});
+
+describe('useLessonLogActions: listFetch (thao tác ghi chồng nhau làm invalidation bị hoãn)', () => {
+  const SETTLE_TIME = new Date('2026-01-14T03:00:30.000Z').getTime();
+  const BEFORE_SETTLE = SETTLE_TIME - 30_000;
+
+  function renderTracking(listFetch) {
+    return renderHook(({ listFetch: current }) => useLessonLogActions({ listFetch: current }), {
+      initialProps: { listFetch },
+    });
+  }
+
+  async function settleToggleAt(result, time) {
+    jest.useFakeTimers({ now: time });
+    const gate = holdUntilSettled();
+    act(() => {
+      result.current.toggleDone(LOG, true);
+    });
+    await act(async () => {
+      gate.resolve({});
+    });
+  }
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('lưu xong khi danh sách không đang tải và chưa có lần tải nào sau đó → vẫn giữ giá trị dự định', async () => {
+    const { result, rerender } = renderTracking({ isFetching: false, startedTimeStamp: BEFORE_SETTLE });
+
+    await settleToggleAt(result, SETTLE_TIME);
+    rerender({ listFetch: { isFetching: false, startedTimeStamp: BEFORE_SETTLE } });
+
+    expect(result.current.pending.get('l1')).toBe(true);
+  });
+
+  test('lần tải bắt đầu SAU lúc lưu xong đang chạy thì giữ; tải xong thì bỏ hẳn, tải khác (cache cũ) không làm sống lại', async () => {
+    const { result, rerender } = renderTracking({ isFetching: false, startedTimeStamp: BEFORE_SETTLE });
+    await settleToggleAt(result, SETTLE_TIME);
+
+    rerender({ listFetch: { isFetching: true, startedTimeStamp: SETTLE_TIME + 100 } });
+    expect(result.current.pending.get('l1')).toBe(true);
+
+    rerender({ listFetch: { isFetching: false, startedTimeStamp: SETTLE_TIME + 100 } });
+    expect(result.current.pending.size).toBe(0);
+
+    rerender({ listFetch: { isFetching: false, startedTimeStamp: BEFORE_SETTLE } });
+    expect(result.current.pending.size).toBe(0);
+  });
+
+  test('lần tải bắt đầu TRƯỚC lúc lưu xong (dữ liệu có thể cũ) kết thúc thì chưa bỏ giá trị dự định', async () => {
+    const { result, rerender } = renderTracking({ isFetching: true, startedTimeStamp: BEFORE_SETTLE });
+    await settleToggleAt(result, SETTLE_TIME);
+
+    rerender({ listFetch: { isFetching: false, startedTimeStamp: BEFORE_SETTLE } });
+
+    expect(result.current.pending.get('l1')).toBe(true);
+  });
+});
+
+describe('useMoveLogFlow: đổi ngữ cảnh khi thao tác kéo-thả còn chạy dở', () => {
+  test('clearFeedback (đổi môn/tuần) trong lúc moveLog đang chờ → thông báo thành công của thao tác cũ không hiện', async () => {
+    const gate = deferred();
+    const actions = {
+      toggleDone: jest.fn(),
+      moveLog: jest.fn(() => gate.promise),
+      clearError: jest.fn(),
+    };
+    const { result } = renderHook(() => useMoveLogFlow(actions));
+
+    let outcome;
+    act(() => {
+      outcome = result.current.dropLog(LOG, '2026-01-22');
+    });
+    act(() => {
+      result.current.clearFeedback();
+    });
+    await act(async () => {
+      gate.resolve(true);
+      await outcome;
+    });
+
+    expect(result.current.notice).toBeNull();
+  });
+
+  test('requestMove (mở hộp thoại buổi khác) không làm mất thông báo của thao tác kéo-thả đang chạy', async () => {
+    const gate = deferred();
+    const actions = {
+      toggleDone: jest.fn(),
+      moveLog: jest.fn(() => gate.promise),
+      clearError: jest.fn(),
+    };
+    const { result } = renderHook(() => useMoveLogFlow(actions));
+
+    let outcome;
+    act(() => {
+      outcome = result.current.dropLog(LOG, '2026-01-22');
+    });
+    act(() => {
+      result.current.requestMove(OTHER_LOG);
+    });
+    await act(async () => {
+      gate.resolve(true);
+      await outcome;
+    });
+
+    expect(result.current.notice).toBe(getMoveSuccessMessage('2026-01-22'));
   });
 });

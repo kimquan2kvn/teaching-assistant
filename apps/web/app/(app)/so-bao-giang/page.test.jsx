@@ -381,10 +381,12 @@ describe('tích, kéo-thả và chuyển ngày', () => {
 
   test('lưu xong mà danh sách đang tải lại: checkbox giữ trạng thái đã tích, tải xong thì theo dữ liệu', async () => {
     let isRefetching = false;
-    getWeekLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching }));
+    let refetchStartedAt;
+    getWeekLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching, startedTimeStamp: refetchStartedAt }));
     updateLessonLogMock.mockImplementation(() => ({
       unwrap: () => {
         isRefetching = true;
+        refetchStartedAt = Date.now();
         return Promise.resolve({});
       },
     }));
@@ -404,7 +406,7 @@ describe('quyền xem (Review Focus 2)', () => {
     ['ADMIN', ADMIN],
     ['STUDENT', STUDENT],
   ])(
-    '(d) %s vào thẳng URL → câu giải thích + link /lop-hoc, KHÔNG gọi query nào',
+    '(d) %s vào thẳng URL → câu giải thích, KHÔNG gọi query nào',
     (_label, user) => {
       renderPage({ user });
 
@@ -413,12 +415,24 @@ describe('quyền xem (Review Focus 2)', () => {
           'Sổ báo giảng tổng hợp chỉ dành cho giáo viên. Quản trị viên xem sổ báo giảng từng môn ở trang chi tiết lớp.',
         ),
       ).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'Đến danh sách lớp' })).toHaveAttribute('href', '/lop-hoc');
       expect(getWeekLogsMock).not.toHaveBeenCalled();
       expect(getMyPositionsMock).not.toHaveBeenCalled();
       expect(screen.queryByRole('button', { name: 'Tuần sau' })).not.toBeInTheDocument();
     },
   );
+
+  test('ADMIN: link dẫn tới Quản lý giáo viên (/lop-hoc của ADMIN là ngõ cụt vì không giữ vị trí nào)', () => {
+    renderPage({ user: ADMIN });
+
+    expect(screen.getByRole('link', { name: 'Đến quản lý giáo viên' })).toHaveAttribute('href', '/quan-ly-giao-vien');
+    expect(screen.queryByRole('link', { name: 'Đến danh sách lớp' })).not.toBeInTheDocument();
+  });
+
+  test('STUDENT: không có link nào tới khu vực giáo viên', () => {
+    renderPage({ user: STUDENT });
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
 
   test('phiên chưa khôi phục xong (user null) → "Đang tải...", không gọi query và không hiện từ chối', () => {
     renderPage({ user: null });
