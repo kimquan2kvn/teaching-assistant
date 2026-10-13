@@ -8,6 +8,9 @@ import { useGetStudentsQuery } from '@/lib/store/students-api';
 import { useGetConductCatalogQuery } from '@/lib/store/conduct-catalog-api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { buildIdNameMap, formatDate, formatSignedPoints, todayDateOnly } from '@/lib/utils';
 
 const ATTENDANCE_LABELS = { PRESENT: 'Có mặt', EXCUSED: 'Phép', LATE: 'Muộn', UNEXCUSED: 'Không phép' };
@@ -71,12 +74,12 @@ export function ClassDashboardContent({ classId }) {
         <Button type="button" variant="outline" size="sm" onClick={() => setDate((d) => addDays(d, -1))}>
           Ngày trước
         </Button>
-        <input
+        <Input
           type="date"
           aria-label="Chọn ngày"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="h-8 rounded-md border border-border px-2 text-sm"
+          className="h-8 w-auto px-2"
         />
         <Button type="button" variant="outline" size="sm" onClick={() => setDate((d) => addDays(d, 1))}>
           Ngày sau
@@ -91,10 +94,10 @@ export function ClassDashboardContent({ classId }) {
         <h2 className="font-heading text-lg font-semibold">Điểm danh chính thức của lớp (GVCN)</h2>
         <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Object.entries(ATTENDANCE_LABELS).map(([status, label]) => (
-            <div key={status} className="rounded-lg border border-border p-4">
+            <Card key={status} className="p-4">
               <Badge variant={ATTENDANCE_VARIANTS[status]}>{label}</Badge>
               <p className="mt-2 text-2xl font-semibold">{attendanceSummary?.[status] ?? 0}</p>
-            </div>
+            </Card>
           ))}
         </div>
       </section>
@@ -104,31 +107,31 @@ export function ClassDashboardContent({ classId }) {
         {recentConductLogs?.length === 0 ? (
           <p className="mt-2 text-sm text-fg-muted">Chưa có nhật ký vi phạm/điểm cộng nào.</p>
         ) : (
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-fg-muted">
-                  <th className="py-2 pr-4">Ngày</th>
-                  <th className="py-2 pr-4">Học sinh</th>
-                  <th className="py-2 pr-4">Điểm</th>
-                  <th className="py-2 pr-4">Lý do</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="mt-2">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ngày</TableHead>
+                  <TableHead>Học sinh</TableHead>
+                  <TableHead>Điểm</TableHead>
+                  <TableHead>Lý do</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {recentConductLogs?.map((log) => (
-                  <tr key={log._id} className="border-t border-border">
-                    <td className="py-2 pr-4">{formatDate(log.date)}</td>
-                    <td className="py-2 pr-4">{studentNameById.get(String(log.studentId)) ?? '—'}</td>
-                    <td className="py-2 pr-4">{formatSignedPoints(log.points)}</td>
-                    <td className="py-2 pr-4">
+                  <TableRow key={log._id}>
+                    <TableCell>{formatDate(log.date)}</TableCell>
+                    <TableCell>{studentNameById.get(String(log.studentId)) ?? '—'}</TableCell>
+                    <TableCell>{formatSignedPoints(log.points)}</TableCell>
+                    <TableCell>
                       {log.catalogItemId
                         ? catalogLabelById.get(String(log.catalogItemId)) ?? log.note ?? '—'
                         : log.note}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </section>

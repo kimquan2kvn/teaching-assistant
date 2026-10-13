@@ -11,12 +11,14 @@ import {
   useUpdatePunishmentLinesMutation,
 } from '@/lib/store/punishments-api';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { cn, formatDate, buildIdNameMap } from '@/lib/utils';
 
 // Nhãn/giá trị lấy NGUYÊN VĂN từ CLAUDE.md mục 9 ("Trạng thái Chưa nộp / Đã nộp / Nộp muộn"), KHÔNG tự nghĩ
@@ -62,7 +64,9 @@ function StatusDialog({ punishment, classId, onOpenChange }) {
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle>Đổi trạng thái chép phạt</DialogTitle>
+        <DialogHeader>
+          <DialogTitle>Đổi trạng thái chép phạt</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
           <div>
             <Label htmlFor="punishment-status">Trạng thái mới</Label>
@@ -72,7 +76,11 @@ function StatusDialog({ punishment, classId, onOpenChange }) {
               <option value="LATE">Nộp muộn</option>
             </NativeSelect>
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">
@@ -108,7 +116,9 @@ function LinesDialog({ punishment, classId, onOpenChange }) {
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle>Sửa số dòng chép phạt</DialogTitle>
+        <DialogHeader>
+          <DialogTitle>Sửa số dòng chép phạt</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
           <div>
             <Label htmlFor="punishment-lines">Số dòng mới</Label>
@@ -122,7 +132,11 @@ function LinesDialog({ punishment, classId, onOpenChange }) {
               required
             />
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">
@@ -199,64 +213,66 @@ export default function ChepPhatPage() {
       {punishmentsLoading ? (
         <p className="mt-4 text-sm text-fg-muted">Đang tải...</p>
       ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-fg-muted">
-                <th className="py-2 pr-4">Học sinh</th>
-                <th className="py-2 pr-4">Lý do</th>
-                <th className="py-2 pr-4">Số dòng</th>
-                <th className="py-2 pr-4">Hạn nộp</th>
-                <th className="py-2 pr-4">Trạng thái</th>
-                <th className="py-2 pr-4">Thông báo phụ huynh</th>
-                {canManage && <th className="py-2 pr-4">Hành động</th>}
-              </tr>
-            </thead>
-            <tbody>
+        <div className="mt-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Học sinh</TableHead>
+                <TableHead>Lý do</TableHead>
+                <TableHead>Số dòng</TableHead>
+                <TableHead>Hạn nộp</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead>Thông báo phụ huynh</TableHead>
+                {canManage && <TableHead>Hành động</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {(punishments ?? []).map((punishment) => {
                 const overdue = isPunishmentOverdue(punishment);
                 return (
-                  <tr key={punishment._id} className="border-t border-border">
-                    <td className="py-2 pr-4">{studentNameById.get(String(punishment.studentId)) ?? ''}</td>
-                    <td className="py-2 pr-4">{punishment.reason}</td>
-                    <td className="py-2 pr-4 font-mono">{punishment.lines}</td>
-                    <td className={cn('py-2 pr-4', overdue && 'text-danger')}>
+                  <TableRow key={punishment._id}>
+                    <TableCell>{studentNameById.get(String(punishment.studentId)) ?? ''}</TableCell>
+                    <TableCell>{punishment.reason}</TableCell>
+                    <TableCell className="font-mono">{punishment.lines}</TableCell>
+                    <TableCell className={cn(overdue && 'text-danger')}>
                       {formatDate(punishment.dueDate)}
                       {overdue && <span className="ml-1 text-xs font-medium">(Quá hạn)</span>}
-                    </td>
-                    <td className="py-2 pr-4">
+                    </TableCell>
+                    <TableCell>
                       <Badge variant={STATUS_BADGE_VARIANTS[punishment.status]}>
                         {STATUS_LABELS[punishment.status]}
                       </Badge>
-                    </td>
-                    <td className="py-2 pr-4">
+                    </TableCell>
+                    <TableCell>
                       {punishment.notifyParent && <Badge variant="danger">Đã báo phụ huynh</Badge>}
-                    </td>
+                    </TableCell>
                     {canManage && (
-                      <td className="flex gap-2 py-2 pr-4">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setStatusDialogTarget(punishment)}
-                        >
-                          Đổi trạng thái
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setLinesDialogTarget(punishment)}
-                        >
-                          Sửa số dòng
-                        </Button>
-                      </td>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setStatusDialogTarget(punishment)}
+                          >
+                            Đổi trạng thái
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setLinesDialogTarget(punishment)}
+                          >
+                            Sửa số dòng
+                          </Button>
+                        </div>
+                      </TableCell>
                     )}
-                  </tr>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
