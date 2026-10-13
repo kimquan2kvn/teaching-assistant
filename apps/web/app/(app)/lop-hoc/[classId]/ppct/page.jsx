@@ -149,9 +149,15 @@ function DeletePpctItemDialog({ positionId, item, onClose }) {
     }
   }
 
+  // Đang xóa thì không cho đóng (Esc, Huỷ, bấm ra ngoài): đóng giữa chừng làm mất lỗi trả về, người dùng không biết
+  // mục còn hay đã xóa.
+  function handleOpenChange(open) {
+    if (!open && !isDeleting) onClose();
+  }
+
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+    <Dialog open onOpenChange={handleOpenChange}>
+      <DialogContent className="w-[calc(100%-2rem)]">
         <DialogTitle>Xóa mục PPCT?</DialogTitle>
         <p className="mt-2 text-sm">
           Mục: <span className="font-medium">{item.title}</span>
@@ -164,7 +170,7 @@ function DeletePpctItemDialog({ positionId, item, onClose }) {
         )}
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" disabled={isDeleting}>
               Huỷ
             </Button>
           </DialogClose>

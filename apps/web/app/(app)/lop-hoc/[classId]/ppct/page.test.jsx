@@ -579,6 +579,67 @@ describe('thêm / sửa qua hộp thoại', () => {
     expect(within(dialog).getByLabelText('Bài học')).toHaveDisplayValue('');
     expect(within(dialog).getByRole('button', { name: 'Thêm' })).toBeInTheDocument();
   });
+
+  // Ở mức trang onOpenChange đóng thật: Esc giữa chừng làm hộp thoại biến mất, lỗi trả về bị mất và người dùng mở lại
+  // gửi lần hai (backend nối vào cuối, không chống trùng) sẽ tạo mục PPCT trùng.
+  test('(M1) đang lưu mục mới: Esc và Huỷ không đóng hộp thoại; lưu xong mới đóng, chỉ gửi đúng 1 yêu cầu', async () => {
+    let finishSaving;
+    createPpctItemMock.mockReturnValue({
+      unwrap: () =>
+        new Promise((resolve) => {
+          finishSaving = resolve;
+        }),
+    });
+    renderPage({ user: GVBM_TOAN });
+    await userEvent.click(screen.getByRole('button', { name: 'Thêm mục PPCT' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByLabelText('Tuần'), '4');
+    await userEvent.type(within(dialog).getByLabelText('Tiết thứ'), '7');
+    await userEvent.type(within(dialog).getByLabelText('Bài học'), 'Bài 7');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Thêm' }));
+
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Huỷ' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(createPpctItemMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      finishSaving({});
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(createPpctItemMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('(M1) lưu lỗi sau khi bấm Esc: lỗi vẫn hiện trong hộp thoại còn mở và gửi lại được', async () => {
+    let failSaving;
+    createPpctItemMock
+      .mockReturnValueOnce({
+        unwrap: () =>
+          new Promise((_, reject) => {
+            failSaving = reject;
+          }),
+      })
+      .mockReturnValueOnce(resolved());
+    renderPage({ user: GVBM_TOAN });
+    await userEvent.click(screen.getByRole('button', { name: 'Thêm mục PPCT' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByLabelText('Tuần'), '1');
+    await userEvent.type(within(dialog).getByLabelText('Tiết thứ'), '2');
+    await userEvent.type(within(dialog).getByLabelText('Bài học'), 'Bài 2');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Thêm' }));
+    await userEvent.keyboard('{Escape}');
+
+    await act(async () => {
+      failSaving({ status: 500, data: { message: 'Đã có lỗi xảy ra, vui lòng thử lại sau' } });
+    });
+
+    expect(await within(dialog).findByText('Đã có lỗi xảy ra, vui lòng thử lại sau')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Thêm' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(createPpctItemMock).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('xóa', () => {
@@ -660,5 +721,60 @@ describe('xóa', () => {
       finishDeleting({ deleted: true });
     });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  function pendingDelete() {
+    const control = {};
+    deletePpctItemMock.mockReturnValue({
+      unwrap: () =>
+        new Promise((resolve, reject) => {
+          control.resolve = resolve;
+          control.reject = reject;
+        }),
+    });
+    return control;
+  }
+
+  test('(M1) đang xóa: Esc và Huỷ không đóng hộp thoại (Huỷ bị khóa); xóa xong mới đóng', async () => {
+    const deletion = pendingDelete();
+    renderPage({ user: GVBM_TOAN });
+    const dialog = await openDeleteDialogFor('Bài 1');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận xóa' }));
+
+    await userEvent.keyboard('{Escape}');
+    const cancel = within(dialog).getByRole('button', { name: 'Huỷ' });
+    expect(cancel).toBeDisabled();
+    await userEvent.click(cancel);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await act(async () => {
+      deletion.resolve({ deleted: true });
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(deletePpctItemMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('(M1) xóa lỗi sau khi bấm Esc: lỗi vẫn hiện trong hộp thoại còn mở, rồi Huỷ đóng được', async () => {
+    const deletion = pendingDelete();
+    renderPage({ user: GVBM_TOAN });
+    const dialog = await openDeleteDialogFor('Bài 1');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận xóa' }));
+    await userEvent.keyboard('{Escape}');
+
+    await act(async () => {
+      deletion.reject({ status: 404, data: { message: 'Không tìm thấy mục PPCT' } });
+    });
+
+    expect(await within(dialog).findByText('Không tìm thấy mục PPCT')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Huỷ' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  test('hộp thoại xóa có lề ngang trên điện thoại (không sát mép màn hình)', async () => {
+    renderPage({ user: GVBM_TOAN });
+
+    expect(await openDeleteDialogFor('Bài 1')).toHaveClass('w-[calc(100%-2rem)]');
   });
 });
