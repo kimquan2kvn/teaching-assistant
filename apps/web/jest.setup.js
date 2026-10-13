@@ -36,3 +36,13 @@ if (typeof global.Response === 'undefined') {
     }
   };
 }
+
+// jsdom không có `ResizeObserver`, mà Radix (Checkbox trong <form>, Select, Popper...) dựng nó khi mount. Bản rỗng
+// là đủ: test không đo kích thước thật.
+if (typeof global.ResizeObserver === 'undefined') {
+  global.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
