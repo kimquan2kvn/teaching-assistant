@@ -68,22 +68,24 @@ export function SlotPanel({ positionId, canEdit }) {
   // null khi đóng; { slot } khi mở — slot là undefined lúc thêm mới.
   const [formState, setFormState] = useState(null);
   const [slotToDelete, setSlotToDelete] = useState(null);
-  const { data, isLoading, isError, error } = useGetPositionTimetableSlotsQuery(positionId, { skip: !positionId });
+  // currentData, KHÔNG phải data: lúc đổi môn data còn là tiết của môn trước, bảng sẽ hiện tiết môn cũ kèm Sửa/Xóa
+  // gửi slotId môn cũ tới positionId môn mới. currentData giữ nguyên khi làm mới cùng môn nên bảng/hộp thoại không nháy.
+  const { currentData, isError, error } = useGetPositionTimetableSlotsQuery(positionId, { skip: !positionId });
   // Sắp trên bản sao: dữ liệu RTK Query bị đóng băng, sort tại chỗ sẽ ném lỗi.
-  const slots = useMemo(() => [...(data ?? [])].sort(compareSlots), [data]);
-
-  if (isLoading) {
-    return (
-      <p role="status" className="text-sm text-fg-muted">
-        Đang tải...
-      </p>
-    );
-  }
+  const slots = useMemo(() => [...(currentData ?? [])].sort(compareSlots), [currentData]);
 
   if (isError) {
     return (
       <p role="alert" className="text-sm text-danger">
         {apiErrorMessage(error, 'Không tải được danh sách tiết, vui lòng thử lại')}
+      </p>
+    );
+  }
+
+  if (currentData === undefined) {
+    return (
+      <p role="status" className="text-sm text-fg-muted">
+        Đang tải...
       </p>
     );
   }
