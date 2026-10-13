@@ -2,7 +2,8 @@
 
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toDateOnly } from '@/lib/schedule';
@@ -37,14 +38,16 @@ export function MoveLogDialog({ log, error, busy = false, onClose, onSubmit }) {
       }}
     >
       <DialogContent>
-        <DialogTitle>Chuyển ngày buổi học</DialogTitle>
-        <div className="mt-2 text-sm">
+        <DialogHeader>
+          <DialogTitle>Chuyển ngày buổi học</DialogTitle>
+        </DialogHeader>
+        <div className="text-sm">
           {position && <p className="text-xs text-fg-muted">{`${position.className} · ${position.subject}`}</p>}
           <p className="font-medium">{log.ppctItem?.title ?? MISSING_ITEM_TITLE}</p>
           <p className="text-fg-muted">{`Ngày hiện tại: ${formatDate(currentDate)}`}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <Label htmlFor={inputId}>Ngày mới</Label>
             <Input
@@ -62,17 +65,19 @@ export function MoveLogDialog({ log, error, busy = false, onClose, onSubmit }) {
           </p>
 
           {busy && (
-            <p role="status" className="text-sm text-fg-muted">
-              Đang chuyển và xếp lại các buổi học, vui lòng đợi...
-            </p>
+            <Alert role="status">
+              <AlertDescription className="text-fg-muted">
+                Đang chuyển và xếp lại các buổi học, vui lòng đợi...
+              </AlertDescription>
+            </Alert>
           )}
           {error && (
-            <p role="alert" className="text-sm text-danger">
-              {error}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
-          <DialogFooter className="mt-0">
+          <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">
                 Huỷ

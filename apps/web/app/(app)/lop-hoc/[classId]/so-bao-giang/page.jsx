@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import { useGetClassDetailQuery } from '@/lib/store/classes-api';
 import { useGetPositionLessonLogsQuery } from '@/lib/store/lesson-logs-api';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
@@ -158,9 +159,11 @@ export default function ClassLessonLogsPage({ params, searchParams }) {
   function renderLogs() {
     if (logsQuery.isError) {
       return (
-        <p role="alert" className="mt-4 text-sm text-danger">
-          {apiErrorMessage(logsQuery.error, 'Không tải được sổ báo giảng, vui lòng thử lại')}
-        </p>
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>
+            {apiErrorMessage(logsQuery.error, 'Không tải được sổ báo giảng, vui lòng thử lại')}
+          </AlertDescription>
+        </Alert>
       );
     }
     if (!logs) {
