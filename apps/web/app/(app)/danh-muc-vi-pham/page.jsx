@@ -13,7 +13,17 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const KIND_LABEL = { VIOLATION: 'Vi phạm', MERIT: 'Điểm cộng' };
 
@@ -55,7 +65,9 @@ function CreateItemDialog({ open, onOpenChange }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle>Thêm mục danh mục</DialogTitle>
+        <DialogHeader>
+          <DialogTitle>Thêm mục danh mục</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <Label htmlFor="catalog-item-label">Nhãn</Label>
@@ -90,7 +102,11 @@ function CreateItemDialog({ open, onOpenChange }) {
               <option value="HOMEWORK_NOT_DONE">Không làm bài tập về nhà</option>
             </NativeSelect>
           </div>
-          {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+          {error && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">
@@ -122,9 +138,15 @@ function ToggleActiveDialog({ item, onOpenChange }) {
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle>{item.isActive ? 'Ẩn mục danh mục này?' : 'Hiện lại mục danh mục này?'}</DialogTitle>
-        <p className="text-sm text-fg-muted">{item.label}</p>
-        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+        <DialogHeader>
+          <DialogTitle>{item.isActive ? 'Ẩn mục danh mục này?' : 'Hiện lại mục danh mục này?'}</DialogTitle>
+          <DialogDescription>{item.label}</DialogDescription>
+        </DialogHeader>
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="outline">
@@ -152,7 +174,13 @@ export default function DanhMucViPhamPage() {
   }
 
   if (isError) {
-    return <p className="p-6 text-sm text-danger">Không tải được danh mục vi phạm/điểm cộng</p>;
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          <AlertDescription>Không tải được danh mục vi phạm/điểm cộng</AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   return (
@@ -166,40 +194,38 @@ export default function DanhMucViPhamPage() {
         )}
       </div>
 
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-fg-muted">
-              <th className="py-2 pr-4">Nhãn</th>
-              <th className="py-2 pr-4">Loại</th>
-              <th className="py-2 pr-4">Điểm</th>
-              <th className="py-2 pr-4">Trạng thái</th>
-              {isAdmin && <th className="py-2 pr-4">Hành động</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {(catalog ?? []).map((item) => (
-              <tr key={item._id} className="border-t border-border">
-                <td className="py-2 pr-4">{item.label}</td>
-                <td className="py-2 pr-4">{KIND_LABEL[item.kind] ?? item.kind}</td>
-                <td className="py-2 pr-4 font-mono">{item.points}</td>
-                <td className="py-2 pr-4">
-                  <Badge variant={item.isActive ? 'success' : 'danger'}>
-                    {item.isActive ? 'Đang dùng' : 'Đã ẩn'}
-                  </Badge>
-                </td>
-                {isAdmin && (
-                  <td className="py-2 pr-4">
-                    <Button type="button" size="sm" variant="outline" onClick={() => setToggleTarget(item)}>
-                      {item.isActive ? 'Ẩn' : 'Hiện'}
-                    </Button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table className="mt-4">
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Nhãn</TableHead>
+            <TableHead>Loại</TableHead>
+            <TableHead>Điểm</TableHead>
+            <TableHead>Trạng thái</TableHead>
+            {isAdmin && <TableHead>Hành động</TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {(catalog ?? []).map((item) => (
+            <TableRow key={item._id}>
+              <TableCell>{item.label}</TableCell>
+              <TableCell>{KIND_LABEL[item.kind] ?? item.kind}</TableCell>
+              <TableCell className="font-mono">{item.points}</TableCell>
+              <TableCell>
+                <Badge variant={item.isActive ? 'success' : 'danger'}>
+                  {item.isActive ? 'Đang dùng' : 'Đã ẩn'}
+                </Badge>
+              </TableCell>
+              {isAdmin && (
+                <TableCell>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setToggleTarget(item)}>
+                    {item.isActive ? 'Ẩn' : 'Hiện'}
+                  </Button>
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
       {createFormOpen && <CreateItemDialog open onOpenChange={setCreateFormOpen} />}
       {toggleTarget && (

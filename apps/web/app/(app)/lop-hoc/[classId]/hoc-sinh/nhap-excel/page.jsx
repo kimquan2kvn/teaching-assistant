@@ -4,7 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useImportPreviewMutation, useImportConfirmMutation } from '@/lib/store/students-api';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { apiErrorMessage, formatDate } from '@/lib/utils';
 
 export default function NhapExcelPage({ params }) {
@@ -72,7 +75,7 @@ export default function NhapExcelPage({ params }) {
       <form onSubmit={handlePreviewSubmit} className="flex flex-wrap items-end gap-3">
         <div>
           <Label htmlFor="import-file">Chọn file Excel</Label>
-          <input
+          <Input
             id="import-file"
             type="file"
             accept=".xlsx"
@@ -84,31 +87,32 @@ export default function NhapExcelPage({ params }) {
         </Button>
       </form>
 
-      {previewError && <p className="mt-2 text-sm text-danger">{previewError}</p>}
+      {previewError && (
+        <Alert variant="destructive" className="mt-2">
+          <AlertDescription>{previewError}</AlertDescription>
+        </Alert>
+      )}
 
       {rows && (
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-border text-fg-muted">
-                <th className="py-2 font-medium">Dòng</th>
-                <th className="py-2 font-medium">Họ tên</th>
-                <th className="py-2 font-medium">Ngày sinh</th>
-                <th className="py-2 font-medium">Lỗi</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="mt-6">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Dòng</TableHead>
+                <TableHead>Họ tên</TableHead>
+                <TableHead>Ngày sinh</TableHead>
+                <TableHead>Lỗi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rows.map((row) => {
                 const rowHasErrors = row.errors.length > 0;
                 return (
-                  <tr
-                    key={row.rowNumber}
-                    className={rowHasErrors ? 'border-b border-border bg-danger-soft' : 'border-b border-border'}
-                  >
-                    <td className="py-2">{row.rowNumber}</td>
-                    <td className="py-2">{row.fullName}</td>
-                    <td className="py-2">{formatDate(row.dob) || '—'}</td>
-                    <td className="py-2">
+                  <TableRow key={row.rowNumber} className={rowHasErrors ? 'bg-danger-soft' : undefined}>
+                    <TableCell>{row.rowNumber}</TableCell>
+                    <TableCell>{row.fullName}</TableCell>
+                    <TableCell>{formatDate(row.dob) || '—'}</TableCell>
+                    <TableCell>
                       {rowHasErrors && (
                         <ul className="text-danger">
                           {row.errors.map((message) => (
@@ -116,14 +120,18 @@ export default function NhapExcelPage({ params }) {
                           ))}
                         </ul>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
 
-          {confirmError && <p className="mt-2 text-sm text-danger">{confirmError}</p>}
+          {confirmError && (
+            <Alert variant="destructive" className="mt-2">
+              <AlertDescription>{confirmError}</AlertDescription>
+            </Alert>
+          )}
 
           <Button type="button" className="mt-4" disabled={hasErrorRows || isConfirming} onClick={handleConfirm}>
             Xác nhận nhập

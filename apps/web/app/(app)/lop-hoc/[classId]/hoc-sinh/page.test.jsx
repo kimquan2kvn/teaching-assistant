@@ -125,7 +125,7 @@ test('toggle "Đã chuyển đi" gọi lại useGetStudentsQuery với status=AL
 test('bảng học sinh cuộn ngang được trên màn hình hẹp (mobile), không làm tràn cả trang', () => {
   renderPage({ id: 'teacher-chu-nhiem', role: 'TEACHER' });
   const table = screen.getByRole('table');
-  expect(table.closest('[class*="overflow-x-auto"]')).not.toBeNull();
+  expect(table.closest('.overflow-auto, .overflow-x-auto')).not.toBeNull();
 });
 
 test('không giữ vị trí nào của lớp này (IDOR, vd gõ nhầm URL) → hiện đúng copy "không có quyền", không hiện bảng rỗng', () => {
