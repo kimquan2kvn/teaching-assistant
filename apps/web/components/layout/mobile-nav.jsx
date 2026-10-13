@@ -13,7 +13,7 @@ export function MobileNav() {
           <MenuIcon className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left">
+      <SheetContent side="left" className="w-72 border-0 bg-sidebar-bg p-0 text-sidebar-fg">
         <SheetTitle className="sr-only">Menu điều hướng</SheetTitle>
         <Sidebar className="flex" />
       </SheetContent>
