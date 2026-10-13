@@ -41,13 +41,22 @@ describe('hộp thoại "Chuyển ngày" đang mở', () => {
   const log = makeLessonLog({ date: '2026-01-05T00:00:00.000Z' });
 
   test('hiện hộp thoại cho đúng buổi; lỗi chỉ hiện trong hộp thoại, không lặp ở banner', () => {
-    render(<LessonLogFeedback {...makeProps({ actions: { error: ERROR }, flow: { movingLog: log } })} />);
+    render(<LessonLogFeedback {...makeProps({ actions: { error: ERROR, errorLogId: log._id }, flow: { movingLog: log } })} />);
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByLabelText('Ngày mới')).toHaveValue('2026-01-05');
     expect(screen.getAllByText(ERROR)).toHaveLength(1);
     expect(screen.getAllByRole('alert')).toHaveLength(1);
     expect(screen.getByRole('alert').closest('[role="dialog"]')).not.toBeNull();
+  });
+
+  test('lỗi của buổi KHÁC không hiện trong hộp thoại của buổi đang mở; hiện ở banner ngoài hộp thoại', () => {
+    render(<LessonLogFeedback {...makeProps({ actions: { error: ERROR, errorLogId: 'buoi-khac' }, flow: { movingLog: log } })} />);
+
+    // Hộp thoại modal đặt aria-hidden cho phần còn lại của trang nên tìm theo chữ, không theo role.
+    const banner = screen.getByText(ERROR);
+    expect(banner).toHaveAttribute('role', 'alert');
+    expect(banner.closest('[role="dialog"]')).toBeNull();
   });
 
   test('busy lấy từ busyIds của đúng buổi đó', () => {

@@ -30,6 +30,8 @@ const MODES = [
 
 const EMPTY_MESSAGE =
   'Chưa có buổi báo giảng nào. Hãy nhập PPCT và khai báo thời khóa biểu của môn để hệ thống tự xếp ngày dạy.';
+const EMPTY_WEEK_MESSAGE =
+  'Tuần này không có buổi học nào. Kiểm tra PPCT và thời khóa biểu của môn nếu bạn mong đợi có buổi.';
 
 // Nhóm theo Thứ Hai của tuần chứa buổi học: Chủ nhật thuộc tuần của Thứ Hai ngay trước nó (getWeekStart lo việc đó).
 function groupByWeek(logs) {
@@ -171,7 +173,9 @@ export default function ClassLessonLogsPage({ params, searchParams }) {
 
     return (
       <>
-        {logs.length === 0 && <p className="mt-4 text-sm text-fg-muted">{EMPTY_MESSAGE}</p>}
+        {logs.length === 0 && (
+          <p className="mt-4 text-sm text-fg-muted">{isWeekMode ? EMPTY_WEEK_MESSAGE : EMPTY_MESSAGE}</p>
+        )}
         {isWeekMode ? (
           <div className="mt-4">
             <LessonWeekBoard

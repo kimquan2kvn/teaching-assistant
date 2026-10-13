@@ -164,15 +164,14 @@ describe('chế độ "Theo tuần"', () => {
     expect(column('2026-01-18').querySelector('[data-log-id="sun"]')).not.toBeNull();
   });
 
-  test('(e) rỗng → hiện câu giải thích đúng chữ', () => {
+  test('(e) tuần rỗng → câu theo tuần (không bảo nhập PPCT/TKB khi chỉ là tuần nghỉ)', () => {
     getLogsMock.mockReturnValue(queryResult([]));
     renderPage();
 
     expect(
-      screen.getByText(
-        'Chưa có buổi báo giảng nào. Hãy nhập PPCT và khai báo thời khóa biểu của môn để hệ thống tự xếp ngày dạy.',
-      ),
+      screen.getByText('Tuần này không có buổi học nào. Kiểm tra PPCT và thời khóa biểu của môn nếu bạn mong đợi có buổi.'),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Chưa có buổi báo giảng nào/)).not.toBeInTheDocument();
   });
 });
 

@@ -40,7 +40,8 @@ export function useLessonLogActions({ isRefreshing = false, listFetch } = {}) {
   const [busyIds, setBusyIds] = useState(() => new Set());
   const [pendingEntries, setPendingEntries] = useState(() => new Map());
   const [wasRefreshing, setWasRefreshing] = useState(isRefreshing);
-  const [error, setError] = useState(null);
+  // { message, logId }: lỗi gắn với buổi gây ra nó để hộp thoại của buổi khác không hiện nhầm.
+  const [errorState, setError] = useState(null);
   // Cổng chặn gửi trùng đồng bộ: state chỉ có hiệu lực ở lần render sau, không chặn được 2 lần gọi liền nhau
   // trong cùng một sự kiện (bấm đúp, kéo-thả đúp) trong lúc backend còn đang tính lại tới vài giây.
   const inFlightIds = useRef(new Set());
@@ -110,7 +111,7 @@ export function useLessonLogActions({ isRefreshing = false, listFetch } = {}) {
       if (isToggle) setEntry(logId, { done: intendedDone, settled: true, settledAt: Date.now() });
       return true;
     } catch (err) {
-      setError(apiErrorMessage(err, UPDATE_FAILED_MESSAGE));
+      setError({ message: apiErrorMessage(err, UPDATE_FAILED_MESSAGE), logId });
       if (isToggle) dropEntry(logId);
       return false;
     } finally {
@@ -135,7 +136,15 @@ export function useLessonLogActions({ isRefreshing = false, listFetch } = {}) {
     setError(null);
   }
 
-  return { toggleDone, moveLog, pending, busyIds, error, clearError };
+  return {
+    toggleDone,
+    moveLog,
+    pending,
+    busyIds,
+    error: errorState?.message ?? null,
+    errorLogId: errorState?.logId ?? null,
+    clearError,
+  };
 }
 
 // Luồng "chuyển ngày" của 2 trang sổ báo giảng: mở/đóng hộp thoại, thả thẻ vào cột ngày, và thông báo thành công.
@@ -143,14 +152,22 @@ export function useLessonLogActions({ isRefreshing = false, listFetch } = {}) {
 export function useMoveLogFlow(actions) {
   const [movingLog, setMovingLog] = useState(null);
   const [notice, setNotice] = useState(null);
+  // Đổi môn/tuần/chế độ xem trong lúc kéo-thả còn chờ backend: thông báo thành công của thao tác thuộc ngữ cảnh cũ
+  // không được hiện sang ngữ cảnh mới.
+  const feedbackEpoch = useRef(0);
 
-  function clearFeedback() {
+  function resetFeedback() {
     actions.clearError();
     setNotice(null);
   }
 
+  function clearFeedback() {
+    feedbackEpoch.current += 1;
+    resetFeedback();
+  }
+
   function requestMove(log) {
-    clearFeedback();
+    resetFeedback();
     setMovingLog(log);
   }
 
@@ -161,8 +178,9 @@ export function useMoveLogFlow(actions) {
 
   async function moveTo(log, dateOnly) {
     setNotice(null);
+    const epoch = feedbackEpoch.current;
     const isMoved = await actions.moveLog(log, dateOnly);
-    if (isMoved) setNotice(getMoveSuccessMessage(dateOnly));
+    if (isMoved && epoch === feedbackEpoch.current) setNotice(getMoveSuccessMessage(dateOnly));
     return isMoved;
   }
 
