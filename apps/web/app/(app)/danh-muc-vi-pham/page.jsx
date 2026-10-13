@@ -11,7 +11,7 @@ import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
@@ -63,10 +63,10 @@ function CreateItemDialog({ open, onOpenChange }) {
           </div>
           <div className="mb-4">
             <Label htmlFor="catalog-item-kind">Loại</Label>
-            <Select id="catalog-item-kind" value={kind} onChange={(event) => setKind(event.target.value)}>
+            <NativeSelect id="catalog-item-kind" value={kind} onChange={(event) => setKind(event.target.value)}>
               <option value="VIOLATION">Vi phạm</option>
               <option value="MERIT">Điểm cộng</option>
-            </Select>
+            </NativeSelect>
           </div>
           <div className="mb-4">
             <Label htmlFor="catalog-item-points">Điểm</Label>
@@ -81,14 +81,14 @@ function CreateItemDialog({ open, onOpenChange }) {
           </div>
           <div>
             <Label htmlFor="catalog-item-special-rule">Luật đặc biệt (tuỳ chọn)</Label>
-            <Select
+            <NativeSelect
               id="catalog-item-special-rule"
               value={specialRule}
               onChange={(event) => setSpecialRule(event.target.value)}
             >
               <option value="">Không có</option>
               <option value="HOMEWORK_NOT_DONE">Không làm bài tập về nhà</option>
-            </Select>
+            </NativeSelect>
           </div>
           {error && <p className="mt-2 text-sm text-danger">{error}</p>}
           <DialogFooter>

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import {
   useGetSchoolYearsQuery,
   useGetHolidaysQuery,
@@ -272,7 +272,7 @@ function SchoolCalendar() {
       <>
         <div className="mt-4 max-w-xs">
           <Label htmlFor="school-year-select">Năm học</Label>
-          <Select
+          <NativeSelect
             id="school-year-select"
             value={schoolYearId}
             onChange={(event) => setPickedYearId(event.target.value)}
@@ -282,7 +282,7 @@ function SchoolCalendar() {
                 {year.name}
               </option>
             ))}
-          </Select>
+          </NativeSelect>
         </div>
 
         <section className="mt-6">

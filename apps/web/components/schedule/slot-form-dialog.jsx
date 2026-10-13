@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { toDateOnly, weekdayLabel } from '@/lib/schedule';
 import { useCreateTimetableSlotMutation, useUpdateTimetableSlotMutation } from '@/lib/store/timetable-api';
 import { apiErrorMessage, todayDateOnly } from '@/lib/utils';
@@ -41,7 +41,7 @@ function SlotForm({ slot, isSaving, onSave }) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor={`${baseId}-day`}>Thứ</Label>
-          <Select
+          <NativeSelect
             id={`${baseId}-day`}
             value={dayOfWeek}
             onChange={(event) => setDayOfWeek(Number(event.target.value))}
@@ -51,11 +51,11 @@ function SlotForm({ slot, isSaving, onSave }) {
                 {weekdayLabel(day)}
               </option>
             ))}
-          </Select>
+          </NativeSelect>
         </div>
         <div>
           <Label htmlFor={`${baseId}-period`}>Tiết</Label>
-          <Select
+          <NativeSelect
             id={`${baseId}-period`}
             value={period}
             onChange={(event) => setPeriod(Number(event.target.value))}
@@ -65,7 +65,7 @@ function SlotForm({ slot, isSaving, onSave }) {
                 {`Tiết ${value}`}
               </option>
             ))}
-          </Select>
+          </NativeSelect>
         </div>
       </div>
 

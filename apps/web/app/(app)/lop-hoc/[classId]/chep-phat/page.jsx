@@ -12,7 +12,7 @@ import {
 } from '@/lib/store/punishments-api';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -66,11 +66,11 @@ function StatusDialog({ punishment, classId, onOpenChange }) {
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
           <div>
             <Label htmlFor="punishment-status">Trạng thái mới</Label>
-            <Select id="punishment-status" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <NativeSelect id="punishment-status" value={status} onChange={(e) => setStatus(e.target.value)}>
               <option value="PENDING">Chưa nộp</option>
               <option value="SUBMITTED">Đã nộp</option>
               <option value="LATE">Nộp muộn</option>
-            </Select>
+            </NativeSelect>
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
           <DialogFooter>

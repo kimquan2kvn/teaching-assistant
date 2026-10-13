@@ -4,7 +4,7 @@ import { useId } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { getWeekStart, monthYearOfWeek, shiftDateOnly, weekStartForMonth } from '@/lib/schedule';
 import { formatDate } from '@/lib/utils';
 
@@ -59,24 +59,24 @@ export function WeekNav({ weekStart, today, onChange }) {
 
       <div className="w-28">
         <Label htmlFor={`${filterId}-month`}>Tháng</Label>
-        <Select id={`${filterId}-month`} value={month} onChange={handleMonthChange}>
+        <NativeSelect id={`${filterId}-month`} value={month} onChange={handleMonthChange}>
           {MONTHS.map((value) => (
             <option key={value} value={value}>
               {`Tháng ${value}`}
             </option>
           ))}
-        </Select>
+        </NativeSelect>
       </div>
 
       <div className="w-24">
         <Label htmlFor={`${filterId}-year`}>Năm</Label>
-        <Select id={`${filterId}-year`} value={year} onChange={handleYearChange}>
+        <NativeSelect id={`${filterId}-year`} value={year} onChange={handleYearChange}>
           {years.map((value) => (
             <option key={value} value={value}>
               {value}
             </option>
           ))}
-        </Select>
+        </NativeSelect>
       </div>
     </div>
   );

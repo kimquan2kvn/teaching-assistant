@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { useCreateHolidayMutation, useUpdateHolidayMutation } from '@/lib/store/school-calendar-api';
 import { HOLIDAY_TYPE_LABELS, toDateOnly } from '@/lib/schedule';
 import { apiErrorMessage } from '@/lib/utils';
@@ -46,13 +46,13 @@ function HolidayForm({ holiday, isSaving, onSave }) {
       </div>
       <div className="mb-4">
         <Label htmlFor="holiday-form-type">Loại</Label>
-        <Select id="holiday-form-type" value={type} onChange={(event) => setType(event.target.value)}>
+        <NativeSelect id="holiday-form-type" value={type} onChange={(event) => setType(event.target.value)}>
           {Object.entries(HOLIDAY_TYPE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
-        </Select>
+        </NativeSelect>
       </div>
       {/* Cố ý không đặt min/max: ngày kết thúc phải >= ngày bắt đầu do backend kiểm và trả 400. */}
       <div className="mb-4 grid gap-4 sm:grid-cols-2">

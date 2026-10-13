@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useGetTeacherPositionsQuery, useGetTeachersQuery } from '@/lib/store/admin-api';
 import { useReassignPositionMutation } from '@/lib/store/positions-api';
 import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -107,7 +107,7 @@ export default function TeacherPositionsPage({ params }) {
           <form onSubmit={handleReassign} className="mt-4 flex flex-col gap-4">
             <div>
               <Label htmlFor="targetTeacher">Giáo viên mới</Label>
-              <Select
+              <NativeSelect
                 id="targetTeacher"
                 value={targetTeacherId}
                 onChange={(e) => setTargetTeacherId(e.target.value)}
@@ -118,7 +118,7 @@ export default function TeacherPositionsPage({ params }) {
                     {t.fullName}
                   </option>
                 ))}
-              </Select>
+              </NativeSelect>
             </div>
 
             {reassignError && <p className="text-sm text-danger">{reassignError}</p>}

@@ -8,7 +8,7 @@ import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { useGetMyPositionsQuery } from '@/lib/store/positions-api';
 import { RoleGate } from '@/components/layout/role-gate';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { LessonLogFeedback } from '@/components/schedule/lesson-log-feedback';
 import { LessonWeekBoard } from '@/components/schedule/lesson-week-board';
 import { useLessonLogActions, useMoveLogFlow } from '@/components/schedule/use-lesson-log-actions';
@@ -175,14 +175,14 @@ function TeacherLessonLogs() {
         {subjectPositions.length > 1 && (
           <div className="w-56">
             <Label htmlFor={filterId}>Lớp/môn</Label>
-            <Select id={filterId} value={activeFilterId} onChange={handleFilterChange}>
+            <NativeSelect id={filterId} value={activeFilterId} onChange={handleFilterChange}>
               <option value={ALL_POSITIONS}>Tất cả các lớp</option>
               {subjectPositions.map((position) => (
                 <option key={position.id} value={position.id}>
                   {`${position.class.name} — ${position.subject}`}
                 </option>
               ))}
-            </Select>
+            </NativeSelect>
           </div>
         )}
       </div>

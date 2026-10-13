@@ -14,7 +14,7 @@ import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { getMyPositionsInClass, todayDateOnly, cn } from '@/lib/utils';
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Label } from '@/components/ui/label';
 
 // 4 trạng thái điểm danh đúng nguyên văn CLAUDE.md #6, màu theo quy ước Binance (xanh = có mặt, đỏ = vắng
@@ -188,7 +188,7 @@ export default function DiemDanhPage() {
         {needsPositionPicker && !isReadOnlyView && (
           <div>
             <Label htmlFor="diem-danh-writing-position">Đang thao tác với vị trí</Label>
-            <Select
+            <NativeSelect
               id="diem-danh-writing-position"
               value={effectiveWritingPositionId}
               onChange={(event) => setWritingPositionId(event.target.value)}
@@ -198,14 +198,14 @@ export default function DiemDanhPage() {
                   {positionLabel(p)}
                 </option>
               ))}
-            </Select>
+            </NativeSelect>
           </div>
         )}
 
         {canViewOtherPositions && (
           <div>
             <Label htmlFor="diem-danh-view-position">Xem vị trí khác</Label>
-            <Select
+            <NativeSelect
               id="diem-danh-view-position"
               value={viewPositionId}
               onChange={(event) => setViewPositionId(event.target.value)}
@@ -216,7 +216,7 @@ export default function DiemDanhPage() {
                   {positionLabel(p)}
                 </option>
               ))}
-            </Select>
+            </NativeSelect>
           </div>
         )}
       </div>

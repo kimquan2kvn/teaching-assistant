@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { getPeriodKind } from '@/lib/ppct';
 import { apiErrorMessage, canEditPosition, cn, getReadableSubjectPositions } from '@/lib/utils';
 
@@ -253,13 +253,13 @@ export default function PpctPage({ params, searchParams }) {
             {positions.length > 1 ? (
               <>
                 <Label htmlFor="ppct-position">Môn</Label>
-                <Select id="ppct-position" value={positionId} onChange={(event) => setPositionId(event.target.value)}>
+                <NativeSelect id="ppct-position" value={positionId} onChange={(event) => setPositionId(event.target.value)}>
                   {positions.map((candidate) => (
                     <option key={candidate.id} value={candidate.id}>
                       {candidate.subject}
                     </option>
                   ))}
-                </Select>
+                </NativeSelect>
               </>
             ) : (
               <p className="text-sm">

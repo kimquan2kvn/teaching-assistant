@@ -7,7 +7,7 @@ import { useGetStudentsQuery } from '@/lib/store/students-api';
 import { useGetConductCatalogQuery } from '@/lib/store/conduct-catalog-api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { buildIdNameMap, formatDate, formatSignedPoints } from '@/lib/utils';
 import { ConductLogFormDialog } from '@/components/conduct/conduct-log-form-dialog';
 
@@ -52,14 +52,14 @@ export default function ViPhamPage() {
       </div>
 
       <div className="mt-4 max-w-xs">
-        <Select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)}>
+        <NativeSelect value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)}>
           <option value="">Tất cả học sinh</option>
           {(students ?? []).map((student) => (
             <option key={student._id} value={student._id}>
               {student.fullName}
             </option>
           ))}
-        </Select>
+        </NativeSelect>
       </div>
 
       {logsLoading ? (

@@ -10,7 +10,7 @@ import { useSelectedPosition } from '@/components/schedule/use-selected-position
 import { WeekNav } from '@/components/schedule/week-nav';
 import { buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { getWeekDays, getWeekStart, isSlotActiveOn } from '@/lib/schedule';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { useGetSchoolYearsQuery, useGetHolidaysQuery } from '@/lib/store/school-calendar-api';
@@ -130,7 +130,7 @@ function TeacherTimetable() {
           <h2 className="font-heading text-lg font-semibold">Khai báo tiết</h2>
           <div className="mt-3 max-w-xs">
             <Label htmlFor="thoi-khoa-bieu-mon">Môn</Label>
-            <Select
+            <NativeSelect
               id="thoi-khoa-bieu-mon"
               value={positionId}
               onChange={(event) => setPositionId(event.target.value)}
@@ -140,7 +140,7 @@ function TeacherTimetable() {
                   {`${position.class.name} — ${position.subject}`}
                 </option>
               ))}
-            </Select>
+            </NativeSelect>
           </div>
           <div className="mt-4">
             <SlotPanel positionId={positionId} canEdit />
