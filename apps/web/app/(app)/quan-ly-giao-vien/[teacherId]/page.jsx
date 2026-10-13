@@ -114,7 +114,7 @@ export default function TeacherPositionsPage({ params }) {
           <DialogHeader>
             <DialogTitle>Gán lại vị trí cho giáo viên khác</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleReassign} className="mt-4 flex flex-col gap-4">
+          <form onSubmit={handleReassign} className="flex flex-col gap-4">
             <div>
               <Label htmlFor="targetTeacher">Giáo viên mới</Label>
               <NativeSelect

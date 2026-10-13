@@ -41,7 +41,7 @@ export function TransferDialog({ open, onOpenChange, classId, studentId, student
         <DialogHeader>
           <DialogTitle>Đánh dấu chuyển đi{studentName ? ` — ${studentName}` : ''}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <Label htmlFor="transferDate">Ngày chuyển đi</Label>
             <Input

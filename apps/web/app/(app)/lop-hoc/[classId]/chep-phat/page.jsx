@@ -67,7 +67,7 @@ function StatusDialog({ punishment, classId, onOpenChange }) {
         <DialogHeader>
           <DialogTitle>Đổi trạng thái chép phạt</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <Label htmlFor="punishment-status">Trạng thái mới</Label>
             <NativeSelect id="punishment-status" value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -119,7 +119,7 @@ function LinesDialog({ punishment, classId, onOpenChange }) {
         <DialogHeader>
           <DialogTitle>Sửa số dòng chép phạt</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <Label htmlFor="punishment-lines">Số dòng mới</Label>
             <Input

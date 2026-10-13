@@ -79,3 +79,21 @@ test('nút X góc phải có tên tiếng Việt và đóng được dialog', as
   await userEvent.click(await screen.findByRole('button', { name: 'Đóng hộp thoại' }));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
+
+test('DialogFooter có khoảng cách trên và gap giữa các nút (cả khi xếp dọc trên điện thoại)', () => {
+  render(
+    <Dialog open>
+      <DialogContent>
+        <DialogTitle>Tiêu đề</DialogTitle>
+        <DialogDescription>Mô tả</DialogDescription>
+        <DialogFooter data-testid="footer">
+          <button type="button">Huỷ</button>
+          <button type="button">Lưu</button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>,
+  );
+  const footer = screen.getByTestId('footer');
+  expect(footer).toHaveClass('mt-2', 'gap-2', 'flex-col-reverse', 'sm:flex-row', 'sm:justify-end');
+  expect(footer).not.toHaveClass('sm:space-x-2');
+});

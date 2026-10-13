@@ -20,7 +20,8 @@ test('ghi đè role="status" cho thông báo thành công không khẩn cấp', 
     </Alert>,
   );
   const status = screen.getByRole('status');
-  expect(status).toHaveClass('bg-success-soft', 'text-success');
+  expect(status).toHaveClass('bg-success-soft', 'text-foreground');
+  expect(status).not.toHaveClass('text-success');
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
 

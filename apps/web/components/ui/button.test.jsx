@@ -73,3 +73,8 @@ test('asChild render nút lên phần tử con (dùng với next/link)', () => {
   expect(link).toHaveClass('bg-primary');
   expect(screen.queryByRole('button')).not.toBeInTheDocument();
 });
+
+test('vòng focus tách khỏi nút vàng bằng offset (nhìn thấy được trên nền trắng)', () => {
+  render(<Button>Lưu</Button>);
+  expect(screen.getByRole('button', { name: 'Lưu' })).toHaveClass('focus-visible:ring-2', 'focus-visible:ring-offset-2');
+});

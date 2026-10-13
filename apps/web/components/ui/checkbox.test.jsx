@@ -27,3 +27,10 @@ test('disabled thì không đổi trạng thái khi bấm', async () => {
   await userEvent.click(screen.getByRole('checkbox', { name: 'Khóa' }));
   expect(handleCheckedChange).not.toHaveBeenCalled();
 });
+
+test('viền chưa tích đủ tương phản (xám), chỉ viền vàng khi đã tích; vòng focus có offset', () => {
+  render(<Checkbox aria-label="Đã thực hiện" />);
+  const checkbox = screen.getByRole('checkbox', { name: 'Đã thực hiện' });
+  expect(checkbox).toHaveClass('border-fg-muted', 'data-[state=checked]:border-primary', 'focus-visible:ring-offset-2');
+  expect(checkbox).not.toHaveClass('border-primary');
+});

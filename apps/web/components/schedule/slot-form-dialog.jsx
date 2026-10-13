@@ -38,7 +38,7 @@ function SlotForm({ slot, isSaving, onSave }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor={`${baseId}-day`}>Thứ</Label>

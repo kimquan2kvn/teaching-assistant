@@ -108,7 +108,7 @@ export default function NhapExcelPage({ params }) {
               {rows.map((row) => {
                 const rowHasErrors = row.errors.length > 0;
                 return (
-                  <TableRow key={row.rowNumber} className={rowHasErrors ? 'bg-danger-soft' : undefined}>
+                  <TableRow key={row.rowNumber} className={rowHasErrors ? 'bg-danger-soft hover:bg-danger-soft' : undefined}>
                     <TableCell>{row.rowNumber}</TableCell>
                     <TableCell>{row.fullName}</TableCell>
                     <TableCell>{formatDate(row.dob) || '—'}</TableCell>
