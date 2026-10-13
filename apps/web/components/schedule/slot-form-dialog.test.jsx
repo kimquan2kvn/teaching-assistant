@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { makeStore } from '@/lib/store/store';
@@ -376,5 +376,77 @@ describe('chặn gửi hai lần khi backend đang tính lại sổ báo giảng
     expect(request.method).toBe('POST');
     expect(new URL(request.url).pathname).toBe('/positions/p-toan/timetable-slots');
     expect(screen.getByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
+  });
+});
+
+// Radix chỉ gắn listener "bấm ra ngoài" sau 1 tick (setTimeout 0), và lớp phủ là phần tử anh em đứng ngay trước nội dung.
+async function clickOverlay() {
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  await userEvent.click(screen.getByRole('dialog').previousElementSibling);
+}
+
+// Ghi tiết làm backend tính lại sổ báo giảng (tới vài giây): đóng giữa chừng thì lỗi 409/400 trả về sau đó không còn chỗ hiện.
+describe('không đóng được khi đang lưu', () => {
+  test('đang lưu: Esc và bấm ra ngoài không đóng, nút Huỷ bị khóa', async () => {
+    useCreateImpl = () => [createSlotMock, { isLoading: true }];
+    const { onOpenChange } = renderDialog();
+
+    await userEvent.keyboard('{Escape}');
+    await clickOverlay();
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Huỷ' })).toBeDisabled();
+  });
+
+  test('chế độ sửa đang lưu cũng không đóng được bằng Esc', async () => {
+    useUpdateImpl = () => [updateSlotMock, { isLoading: true }];
+    const { onOpenChange } = renderDialog({ slot: makeSlot() });
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Huỷ' })).toBeDisabled();
+  });
+
+  test('đang rảnh: Esc và bấm ra ngoài đóng được (đối chứng)', async () => {
+    const { onOpenChange } = renderDialog();
+
+    await userEvent.keyboard('{Escape}');
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+
+    onOpenChange.mockClear();
+    await clickOverlay();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  test('hook và store thật: bấm Esc lúc request còn treo không đóng, lỗi 409 trả về sau đó vẫn hiện trong hộp thoại, rồi mới đóng được', async () => {
+    useCreateImpl = actualTimetableApi.useCreateTimetableSlotMutation;
+    let respondLater;
+    global.fetch = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          respondLater = () => {
+            const text = JSON.stringify({ statusCode: 409, message: 'Bạn đã có tiết khác vào thời điểm này' });
+            resolve({ status: 409, text: () => Promise.resolve(text), clone: () => ({ text: () => Promise.resolve(text) }) });
+          };
+        }),
+    );
+    const { onOpenChange } = renderDialog();
+
+    setDate('Hiệu lực từ', '2026-01-05');
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    expect(await screen.findByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
+    await userEvent.keyboard('{Escape}');
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      respondLater();
+    });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Bạn đã có tiết khác vào thời điểm này');
+    expect(await screen.findByRole('button', { name: 'Lưu' })).toBeEnabled();
+
+    await userEvent.keyboard('{Escape}');
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

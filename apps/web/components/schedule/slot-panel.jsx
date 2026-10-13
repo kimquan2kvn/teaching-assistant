@@ -22,6 +22,12 @@ function DeleteSlotDialog({ positionId, slot, onOpenChange }) {
   const [error, setError] = useState(null);
   const [deleteSlot, { isLoading }] = useDeleteTimetableSlotMutation();
 
+  // Đang xóa thì không cho đóng (Esc, Huỷ, bấm ra ngoài): lỗi trả về sau đó cần còn chỗ để hiện.
+  function handleOpenChange(nextOpen) {
+    if (!nextOpen && isLoading) return;
+    onOpenChange(nextOpen);
+  }
+
   async function handleConfirm() {
     if (isLoading) return;
     setError(null);
@@ -34,7 +40,7 @@ function DeleteSlotDialog({ positionId, slot, onOpenChange }) {
   }
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
+    <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)]">
         <DialogTitle>Xóa tiết?</DialogTitle>
         <p className="mt-2 text-sm">
@@ -50,7 +56,7 @@ function DeleteSlotDialog({ positionId, slot, onOpenChange }) {
         )}
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" disabled={isLoading}>
               Huỷ
             </Button>
           </DialogClose>

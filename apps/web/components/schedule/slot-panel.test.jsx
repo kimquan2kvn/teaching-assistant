@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { makeStore } from '@/lib/store/store';
@@ -383,5 +383,69 @@ describe('thêm và sửa tiết (hộp thoại nhúng trong panel)', () => {
       effectiveTo: '2026-03-01',
     });
     expect(createSlotMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('hộp xác nhận xóa không đóng được khi đang xóa', () => {
+  async function clickOverlay() {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await userEvent.click(screen.getByRole('dialog').previousElementSibling);
+  }
+
+  test('đang xóa: Esc và bấm ra ngoài không đóng, nút Huỷ bị khóa', async () => {
+    useDeleteImpl = () => [deleteSlotMock, { isLoading: true }];
+    mockSlots(JUMBLED_SLOTS);
+    renderPanel({ canEdit: true });
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Xóa' })[0]);
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.keyboard('{Escape}');
+    await clickOverlay();
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Huỷ' })).toBeDisabled();
+  });
+
+  test('đang rảnh: Esc đóng được (đối chứng)', async () => {
+    mockSlots(JUMBLED_SLOTS);
+    renderPanel({ canEdit: true });
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Xóa' })[0]);
+    await screen.findByRole('dialog');
+    await userEvent.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  test('hook và store thật: Esc lúc DELETE còn treo không đóng, lỗi 404 trả về sau đó vẫn hiện trong hộp thoại', async () => {
+    useDeleteImpl = actualTimetableApi.useDeleteTimetableSlotMutation;
+    let respondLater;
+    global.fetch = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          respondLater = () => {
+            const text = JSON.stringify({ statusCode: 404, message: 'Không tìm thấy tiết trong thời khóa biểu' });
+            resolve({ status: 404, text: () => Promise.resolve(text), clone: () => ({ text: () => Promise.resolve(text) }) });
+          };
+        }),
+    );
+    mockSlots(JUMBLED_SLOTS);
+    render(
+      <Provider store={makeStore()}>
+        <SlotPanel positionId="p-toan" canEdit />
+      </Provider>,
+    );
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Xóa' })[0]);
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận' }));
+    expect(await within(dialog).findByRole('button', { name: 'Đang xóa...' })).toBeDisabled();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await act(async () => {
+      respondLater();
+    });
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Không tìm thấy tiết trong thời khóa biểu');
   });
 });
