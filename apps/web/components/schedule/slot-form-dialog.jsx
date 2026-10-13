@@ -2,8 +2,9 @@
 
 import { useId, useState } from 'react';
 import { MAX_PERIODS_PER_DAY, TIMETABLE_DAYS_OF_WEEK } from '@so-chu-nhiem/shared';
+import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
@@ -93,13 +94,9 @@ function SlotForm({ slot, isSaving, onSave }) {
 
       <p className="text-sm text-fg-muted">Lưu tiết sẽ tự xếp lại các buổi báo giảng chưa chốt của môn</p>
 
-      {error && (
-        <p role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      )}
+      {error && <Alert variant="destructive">{error}</Alert>}
 
-      <DialogFooter className="mt-0">
+      <DialogFooter>
         <DialogClose asChild>
           <Button type="button" variant="outline" disabled={isSaving}>
             Huỷ
@@ -137,7 +134,9 @@ export function SlotFormDialog({ open, onOpenChange, positionId, slot }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] overflow-y-auto">
-        <DialogTitle>{slot ? 'Sửa tiết' : 'Thêm tiết'}</DialogTitle>
+        <DialogHeader>
+          <DialogTitle>{slot ? 'Sửa tiết' : 'Thêm tiết'}</DialogTitle>
+        </DialogHeader>
         <SlotForm key={slot?._id ?? 'new'} slot={slot} isSaving={isSaving} onSave={handleSave} />
       </DialogContent>
     </Dialog>

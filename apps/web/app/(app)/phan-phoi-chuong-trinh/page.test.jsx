@@ -214,3 +214,24 @@ describe('phân quyền hiển thị', () => {
     expect(screen.queryAllByRole('listitem')).toHaveLength(0);
   });
 });
+
+describe('dùng component shadcn/ui', () => {
+  test('thẻ môn là Card đặt trong <li>; lỗi tải là Alert destructive; khối chờ là Skeleton', () => {
+    mockPositions([TOAN]);
+    const { unmount } = renderPage('TEACHER');
+    const item = screen.getByRole('listitem');
+    expect(item.firstElementChild).toHaveClass('bg-card', 'rounded-[10px]');
+    unmount();
+
+    useGetMyPositionsQueryMock.mockReturnValue({ data: undefined, isLoading: false, error: { status: 500 } });
+    const { unmount: unmountError } = renderPage('TEACHER');
+    expect(screen.getByRole('alert')).toHaveClass('border-destructive/40');
+    unmountError();
+
+    useGetMyPositionsQueryMock.mockReturnValue({ data: undefined, isLoading: true, error: undefined });
+    renderPage('TEACHER');
+    const loading = screen.getByRole('status', { name: 'Đang tải danh sách môn' });
+    expect(loading.children).toHaveLength(2);
+    expect(loading.firstElementChild).toHaveClass('animate-pulse', 'bg-muted');
+  });
+});

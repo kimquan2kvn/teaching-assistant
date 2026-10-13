@@ -449,3 +449,25 @@ describe('hộp xác nhận xóa không đóng được khi đang xóa', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Không tìm thấy tiết trong thời khóa biểu');
   });
 });
+
+describe('dùng component shadcn/ui', () => {
+  test('bảng tiết là Table (có wrapper cuộn ngang), lỗi tải là Alert destructive', () => {
+    mockSlots(JUMBLED_SLOTS);
+    const { unmount } = renderPanel();
+
+    const table = screen.getByRole('table');
+    expect(table).toHaveClass('caption-bottom');
+    expect(table.parentElement).toHaveClass('overflow-auto');
+    unmount();
+
+    getSlotsMock.mockReturnValue({
+      data: undefined,
+      currentData: undefined,
+      isLoading: false,
+      isError: true,
+      error: { status: 500 },
+    });
+    renderPanel();
+    expect(screen.getByRole('alert')).toHaveClass('border-destructive/40');
+  });
+});

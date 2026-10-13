@@ -572,3 +572,13 @@ describe('đầu vào thiếu', () => {
     expect(container.querySelectorAll('[data-period]:not(:empty)')).toHaveLength(0);
   });
 });
+
+describe('dùng component shadcn/ui', () => {
+  test('khung lưới là Card nhưng vẫn là region có tên và vẫn là lưới CSS (không phải table)', () => {
+    renderGrid();
+
+    const region = screen.getByRole('region', { name: /Thời khóa biểu tuần 12\/01/ });
+    expect(region).toHaveClass('rounded-[10px]', 'border');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+});
