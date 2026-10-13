@@ -13,9 +13,13 @@ import {
 import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { getMyPositionsInClass, todayDateOnly, cn } from '@/lib/utils';
 import { Badge, badgeVariants } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // 4 trạng thái điểm danh đúng nguyên văn CLAUDE.md #6, màu theo quy ước Binance (xanh = có mặt, đỏ = vắng
 // không phép, xám = phép/muộn — không phải vi phạm nhưng cũng không phải "đạt chuẩn").
@@ -172,12 +176,12 @@ export default function DiemDanhPage() {
             <Button type="button" variant="outline" size="sm" onClick={() => setDate((d) => shiftDate(d, -1))}>
               Lùi 1 ngày
             </Button>
-            <input
+            <Input
               id="diem-danh-date"
               type="date"
               value={date}
               onChange={(event) => setDate(event.target.value)}
-              className="h-10 rounded-md border border-border px-3 text-sm"
+              className="w-auto"
             />
             <Button type="button" variant="outline" size="sm" onClick={() => setDate((d) => shiftDate(d, 1))}>
               Tiến 1 ngày
@@ -188,7 +192,7 @@ export default function DiemDanhPage() {
         {needsPositionPicker && !isReadOnlyView && (
           <div>
             <Label htmlFor="diem-danh-writing-position">Đang thao tác với vị trí</Label>
-            <Select
+            <NativeSelect
               id="diem-danh-writing-position"
               value={effectiveWritingPositionId}
               onChange={(event) => setWritingPositionId(event.target.value)}
@@ -198,14 +202,14 @@ export default function DiemDanhPage() {
                   {positionLabel(p)}
                 </option>
               ))}
-            </Select>
+            </NativeSelect>
           </div>
         )}
 
         {canViewOtherPositions && (
           <div>
             <Label htmlFor="diem-danh-view-position">Xem vị trí khác</Label>
-            <Select
+            <NativeSelect
               id="diem-danh-view-position"
               value={viewPositionId}
               onChange={(event) => setViewPositionId(event.target.value)}
@@ -216,49 +220,55 @@ export default function DiemDanhPage() {
                   {positionLabel(p)}
                 </option>
               ))}
-            </Select>
+            </NativeSelect>
           </div>
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-4 rounded-md border border-border p-4">
+      <Card className="mt-4 flex flex-wrap gap-4 p-4">
         <span className="w-full text-sm font-medium text-fg-muted">Điểm danh chính thức của lớp (GVCN)</span>
         {STATUS_OPTIONS.map((opt) => (
           <span key={opt.value} className="text-sm">
             {opt.label}: <span className="font-mono">{summary?.[opt.value] ?? 0}</span>
           </span>
         ))}
-      </div>
+      </Card>
 
-      {error && <p className="mt-4 text-sm text-danger">{error}</p>}
+      {error && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {attendanceIsError && (
-        <p className="mt-4 text-sm text-danger">
-          {attendanceError?.data?.message ?? 'Không tải được dữ liệu điểm danh'}
-        </p>
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>
+            {attendanceError?.data?.message ?? 'Không tải được dữ liệu điểm danh'}
+          </AlertDescription>
+        </Alert>
       )}
 
       {studentsLoading ? (
         <p className="mt-4 text-sm text-fg-muted">Đang tải...</p>
       ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-fg-muted">
-                <th className="py-2 pr-4">STT</th>
-                <th className="py-2 pr-4">Họ tên</th>
-                <th className="py-2 pr-4">Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="mt-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>STT</TableHead>
+                <TableHead>Họ tên</TableHead>
+                <TableHead>Trạng thái</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {roster.map((student, index) => {
                 const status = statusOf(student._id);
                 const activeOption = STATUS_BY_VALUE.get(status);
                 return (
-                  <tr key={student._id} className="border-t border-border">
-                    <td className="py-2 pr-4">{index + 1}</td>
-                    <td className="py-2 pr-4">{student.fullName}</td>
-                    <td className="py-2 pr-4">
+                  <TableRow key={student._id}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{student.fullName}</TableCell>
+                    <TableCell>
                       {isReadOnlyView ? (
                         <Badge variant={activeOption?.variant}>{activeOption?.label}</Badge>
                       ) : (
@@ -279,12 +289,12 @@ export default function DiemDanhPage() {
                           ))}
                         </div>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 

@@ -261,3 +261,12 @@ Chi tiết: `docs/superpowers/plans/2026-10-11-phase3-ui.md` (mục "Giả đị
 - **Token màu `--brand-soft/--success-soft/--danger-soft`** thay modifier độ mờ trên màu `var()` (Tailwind không sinh CSS cho
   `bg-brand/10`); đã vá 7 vị trí sẵn có của Phase 1/2.
 - **Jest của web ghim múi giờ `Asia/Ho_Chi_Minh`** (app chỉ dùng tại VN; CI chạy UTC làm 3 test "hôm nay" của Phase 2 đỏ).
+
+## Chuyển UI sang shadcn/ui thật (2026-10-13)
+
+- **Lý do**: `.claude/CLAUDE.md` yêu cầu shadcn/ui là bộ component nền, nhưng Phase 0–3 dùng 8 file viết tay theo kiểu shadcn (không có `components.json`). Đã chuyển sang shadcn 2.10 (JavaScript, style new-york, Tailwind 3.4) và đổi các màn hình sang `Table`, `Checkbox`, `Alert`, `Card`, `Skeleton`, `Dialog*`. Quy tắc từ nay: UI dựng bằng component shadcn trong `components/ui`, thiếu thì `shadcn add`, không tự viết bảng/checkbox/tab bằng HTML thuần.
+- **Select**: dùng `native-select` chính thức của shadcn (chuyển từ bản `new-york-v4` sang Tailwind 3) để giữ trình chọn gốc trên điện thoại; Radix `Select` có sẵn trong `components/ui/select.jsx` nhưng chưa màn hình nào dùng. Ô chọn ngày giữ `<input type="date">`; thông báo dùng `Alert` (chưa có toast).
+- **Theme**: token shadcn dạng kênh RGB (`rgb(var(--x) / <alpha-value>)`) ánh xạ sang bảng màu Binance; token cũ (`brand`, `fg`, `success`, `danger`, `sidebar-*`…) giữ nguyên. Nút chính pill vàng chữ đen.
+- **Khi chạy `shadcn add` sau này**: CLI v2 cho Tailwind 3 ghi token dạng HSL (`hsl(var(--x))`) nên có thể trộn HSL vào hệ RGB của dự án; xem lại diff `globals.css` và `tailwind.config.js` sau mỗi lần add, không chạy lại `init`. Bước `pnpm add` của CLI lỗi vì lệch pnpm store: cài gói Radix bằng `corepack pnpm@12.3.4 --filter web add ...` trước.
+- **Đã sửa theo review**: `DialogFooter` có `mt-2 gap-2`; `Alert` success dùng chữ tối (độ tương phản); viền checkbox chưa tích màu xám `fg-muted`; vòng focus có `ring-offset-2`.
+- **Còn hoãn**: ô trạng thái điểm danh và danh sách mục danh mục trong dialog vi phạm vẫn là `<button aria-pressed>` (nên chuyển `ToggleGroup`/`Button` sau); `aria-describedby` thủ công trùng với id Radix tự nối ở vài dialog (vô hại); `Label` có `leading-none`, `DialogHeader` căn giữa dưới 640px, `DialogContent` rộng `max-w-lg` so với bản cũ; chưa ai xem giao diện trên trình duyệt thật.

@@ -1,8 +1,18 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toDateOnly, weekdayLabel } from '@/lib/schedule';
 import { useDeleteTimetableSlotMutation, useGetPositionTimetableSlotsQuery } from '@/lib/store/timetable-api';
 import { apiErrorMessage, formatDate } from '@/lib/utils';
@@ -42,18 +52,16 @@ function DeleteSlotDialog({ positionId, slot, onOpenChange }) {
   return (
     <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)]">
-        <DialogTitle>Xóa tiết?</DialogTitle>
-        <p className="mt-2 text-sm">
-          {`${weekdayLabel(slot.dayOfWeek)}, Tiết ${slot.period}, hiệu lực từ ${formatDate(slot.effectiveFrom)}`}
-        </p>
-        <p className="mt-2 text-sm text-fg-muted">
+        <DialogHeader>
+          <DialogTitle>Xóa tiết?</DialogTitle>
+          <DialogDescription className="text-foreground">
+            {`${weekdayLabel(slot.dayOfWeek)}, Tiết ${slot.period}, hiệu lực từ ${formatDate(slot.effectiveFrom)}`}
+          </DialogDescription>
+        </DialogHeader>
+        <p className="text-sm text-fg-muted">
           {'Các buổi đã tích "Đã thực hiện" hoặc đã chỉnh tay được giữ nguyên.'}
         </p>
-        {error && (
-          <p role="alert" className="mt-2 text-sm text-danger">
-            {error}
-          </p>
-        )}
+        {error && <Alert variant="destructive">{error}</Alert>}
         <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={isLoading}>
@@ -81,11 +89,7 @@ export function SlotPanel({ positionId, canEdit }) {
   const slots = useMemo(() => [...(currentData ?? [])].sort(compareSlots), [currentData]);
 
   if (isError) {
-    return (
-      <p role="alert" className="text-sm text-danger">
-        {apiErrorMessage(error, 'Không tải được danh sách tiết, vui lòng thử lại')}
-      </p>
-    );
+    return <Alert variant="destructive">{apiErrorMessage(error, 'Không tải được danh sách tiết, vui lòng thử lại')}</Alert>;
   }
 
   if (currentData === undefined) {
@@ -109,45 +113,43 @@ export function SlotPanel({ positionId, canEdit }) {
       {slots.length === 0 ? (
         <p className="mt-4 text-sm text-fg-muted">Môn này chưa khai báo tiết nào</p>
       ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-fg-muted">
-                <th className="py-2 pr-4">Thứ</th>
-                <th className="py-2 pr-4">Tiết</th>
-                <th className="py-2 pr-4">Hiệu lực từ</th>
-                <th className="py-2 pr-4">Đến</th>
-                {canEdit && <th className="py-2 pr-4">Hành động</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {slots.map((slot) => (
-                <tr key={slot._id} className="border-t border-border">
-                  <td className="py-2 pr-4">{weekdayLabel(slot.dayOfWeek)}</td>
-                  <td className="py-2 pr-4 font-mono">{`Tiết ${slot.period}`}</td>
-                  <td className="py-2 pr-4 font-mono">{formatDate(slot.effectiveFrom)}</td>
-                  {slot.effectiveTo ? (
-                    <td className="py-2 pr-4 font-mono">{formatDate(slot.effectiveTo)}</td>
-                  ) : (
-                    <td className="py-2 pr-4 text-fg-muted">Chưa kết thúc</td>
-                  )}
-                  {canEdit && (
-                    <td className="py-2 pr-4">
-                      <div className="flex gap-2">
-                        <Button type="button" size="sm" variant="outline" onClick={() => setFormState({ slot })}>
-                          Sửa
-                        </Button>
-                        <Button type="button" size="sm" variant="outline" onClick={() => setSlotToDelete(slot)}>
-                          Xóa
-                        </Button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table className="mt-4">
+          <TableHeader>
+            <TableRow className="text-left">
+              <TableHead>Thứ</TableHead>
+              <TableHead>Tiết</TableHead>
+              <TableHead>Hiệu lực từ</TableHead>
+              <TableHead>Đến</TableHead>
+              {canEdit && <TableHead>Hành động</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {slots.map((slot) => (
+              <TableRow key={slot._id}>
+                <TableCell>{weekdayLabel(slot.dayOfWeek)}</TableCell>
+                <TableCell className="font-mono">{`Tiết ${slot.period}`}</TableCell>
+                <TableCell className="font-mono">{formatDate(slot.effectiveFrom)}</TableCell>
+                {slot.effectiveTo ? (
+                  <TableCell className="font-mono">{formatDate(slot.effectiveTo)}</TableCell>
+                ) : (
+                  <TableCell className="text-fg-muted">Chưa kết thúc</TableCell>
+                )}
+                {canEdit && (
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button type="button" size="sm" variant="outline" onClick={() => setFormState({ slot })}>
+                        Sửa
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" onClick={() => setSlotToDelete(slot)}>
+                        Xóa
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {formState && (

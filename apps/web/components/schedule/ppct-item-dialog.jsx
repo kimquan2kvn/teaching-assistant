@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { MAX_PPCT_PERIOD_COUNT, MAX_PPCT_WEEK } from '@so-chu-nhiem/shared';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -68,7 +69,7 @@ function PpctItemForm({ positionId, item, isSaving, onSavingChange, onOpenChange
   // noValidate: toàn bộ kiểm tra do validatePpctRow đảm nhiệm để thông báo luôn là tiếng Việt, không phải
   // bong bóng gợi ý mặc định của trình duyệt (phụ thuộc ngôn ngữ máy).
   return (
-    <form onSubmit={handleSubmit} noValidate className="mt-4 flex flex-col gap-4">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="ppct-item-week">Tuần</Label>
@@ -134,14 +135,16 @@ function PpctItemForm({ positionId, item, isSaving, onSavingChange, onOpenChange
       </div>
 
       {errors.length > 0 && (
-        <div role="alert" className="flex flex-col gap-1 text-sm text-danger">
-          {errors.map((message) => (
-            <p key={message}>{message}</p>
-          ))}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription className="flex flex-col gap-1">
+            {errors.map((message) => (
+              <p key={message}>{message}</p>
+            ))}
+          </AlertDescription>
+        </Alert>
       )}
 
-      <DialogFooter className="mt-2">
+      <DialogFooter>
         <DialogClose asChild>
           <Button type="button" variant="outline" disabled={isSaving}>
             Huỷ
@@ -168,8 +171,10 @@ export function PpctItemDialog({ open, onOpenChange, positionId, item }) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] overflow-y-auto">
-        <DialogTitle>{item ? 'Sửa mục PPCT' : 'Thêm mục PPCT'}</DialogTitle>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{item ? 'Sửa mục PPCT' : 'Thêm mục PPCT'}</DialogTitle>
+        </DialogHeader>
         <PpctItemForm
           positionId={positionId}
           item={item}

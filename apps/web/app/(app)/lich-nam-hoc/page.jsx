@@ -4,11 +4,22 @@ import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RoleGate } from '@/components/layout/role-gate';
 import { HolidayFormDialog } from '@/components/schedule/holiday-form-dialog';
+import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogHeader,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   useGetSchoolYearsQuery,
   useGetHolidaysQuery,
@@ -53,9 +64,7 @@ function formatDateRange(startDate, endDate) {
 function StatsSection({ stats, isError, error }) {
   if (isError) {
     return (
-      <p role="alert" className="text-sm text-danger">
-        {apiErrorMessage(error, 'Không tải được thống kê ngày nghỉ')}
-      </p>
+      <Alert variant="destructive">{apiErrorMessage(error, 'Không tải được thống kê ngày nghỉ')}</Alert>
     );
   }
   if (!stats) {
@@ -68,18 +77,17 @@ function StatsSection({ stats, isError, error }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {STAT_CARDS.map(({ key, label, hint }) => (
-        <div
-          key={key}
-          role="group"
-          aria-labelledby={`calendar-stat-${key}`}
-          className="rounded-lg border border-border p-4"
-        >
-          <p id={`calendar-stat-${key}`} className="text-sm text-fg-muted">
-            {label}
-          </p>
-          <p className="mt-2 font-mono text-2xl font-semibold">{stats[key] ?? '—'}</p>
-          {hint && <p className="mt-1 text-xs text-fg-muted">{hint}</p>}
-        </div>
+        <Card key={key} role="group" aria-labelledby={`calendar-stat-${key}`}>
+          <CardHeader className="p-4 pb-0">
+            <CardTitle id={`calendar-stat-${key}`} className="text-sm font-normal leading-normal text-fg-muted">
+              {label}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-2">
+            <p className="font-mono text-2xl font-semibold">{stats[key] ?? '—'}</p>
+            {hint && <p className="mt-1 text-xs text-fg-muted">{hint}</p>}
+          </CardContent>
+        </Card>
       ))}
     </div>
   );
@@ -87,68 +95,50 @@ function StatsSection({ stats, isError, error }) {
 
 function HolidaysTable({ holidays, isAdmin, onEdit, onDelete }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm" aria-labelledby="holidays-heading">
-        <thead>
-          <tr className="text-left text-fg-muted">
-            <th scope="col" className="py-2 pr-4">
-              Tên
-            </th>
-            <th scope="col" className="py-2 pr-4">
-              Loại
-            </th>
-            <th scope="col" className="py-2 pr-4">
-              Từ ngày
-            </th>
-            <th scope="col" className="py-2 pr-4">
-              Đến ngày
-            </th>
+    <Table aria-labelledby="holidays-heading">
+      <TableHeader>
+        <TableRow className="text-left">
+          <TableHead scope="col">Tên</TableHead>
+          <TableHead scope="col">Loại</TableHead>
+          <TableHead scope="col">Từ ngày</TableHead>
+          <TableHead scope="col">Đến ngày</TableHead>
+          {isAdmin && <TableHead scope="col">Hành động</TableHead>}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {holidays.map((holiday) => (
+          <TableRow key={holiday._id}>
+            <TableCell>{holiday.name}</TableCell>
+            <TableCell>
+              <Badge variant={holiday.type === 'DOT_XUAT' ? 'danger' : 'muted'}>
+                {HOLIDAY_TYPE_LABELS[holiday.type] ?? holiday.type}
+              </Badge>
+            </TableCell>
+            <TableCell>{formatDate(toDateOnly(holiday.startDate))}</TableCell>
+            <TableCell>{formatDate(toDateOnly(holiday.endDate))}</TableCell>
             {isAdmin && (
-              <th scope="col" className="py-2 pr-4">
-                Hành động
-              </th>
+              <TableCell>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={() => onEdit(holiday)}>
+                    Sửa
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => onDelete(holiday)}>
+                    Xóa
+                  </Button>
+                </div>
+              </TableCell>
             )}
-          </tr>
-        </thead>
-        <tbody>
-          {holidays.map((holiday) => (
-            <tr key={holiday._id} className="border-t border-border">
-              <td className="py-2 pr-4">{holiday.name}</td>
-              <td className="py-2 pr-4">
-                <Badge variant={holiday.type === 'DOT_XUAT' ? 'danger' : 'muted'}>
-                  {HOLIDAY_TYPE_LABELS[holiday.type] ?? holiday.type}
-                </Badge>
-              </td>
-              <td className="py-2 pr-4">{formatDate(toDateOnly(holiday.startDate))}</td>
-              <td className="py-2 pr-4">{formatDate(toDateOnly(holiday.endDate))}</td>
-              {isAdmin && (
-                <td className="py-2 pr-4">
-                  <div className="flex gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={() => onEdit(holiday)}>
-                      Sửa
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => onDelete(holiday)}>
-                      Xóa
-                    </Button>
-                  </div>
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
 function HolidaysSection({ holidays, isError, error, isAdmin, onEdit, onDelete }) {
   let body;
   if (isError) {
-    body = (
-      <p role="alert" className="text-sm text-danger">
-        {apiErrorMessage(error, 'Không tải được danh sách ngày nghỉ')}
-      </p>
-    );
+    body = <Alert variant="destructive">{apiErrorMessage(error, 'Không tải được danh sách ngày nghỉ')}</Alert>;
   } else if (!holidays) {
     body = (
       <p role="status" className="text-sm text-fg-muted">
@@ -196,15 +186,13 @@ function DeleteHolidayDialog({ holiday, schoolYearId, onClose }) {
   return (
     <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent aria-describedby={DELETE_NOTE_ID}>
-        <DialogTitle>Xóa ngày nghỉ?</DialogTitle>
-        <p id={DELETE_NOTE_ID} className="mt-2 text-sm text-fg-muted">
-          {`Bạn sắp xóa ngày nghỉ "${holiday.name}" (${formatDateRange(holiday.startDate, holiday.endDate)}). Sổ báo giảng của tất cả các môn sẽ được tính lại (có thể mất vài giây).`}
-        </p>
-        {error && (
-          <p role="alert" className="mt-3 text-sm text-danger">
-            {error}
-          </p>
-        )}
+        <DialogHeader>
+          <DialogTitle>Xóa ngày nghỉ?</DialogTitle>
+          <DialogDescription id={DELETE_NOTE_ID}>
+            {`Bạn sắp xóa ngày nghỉ "${holiday.name}" (${formatDateRange(holiday.startDate, holiday.endDate)}). Sổ báo giảng của tất cả các môn sẽ được tính lại (có thể mất vài giây).`}
+          </DialogDescription>
+        </DialogHeader>
+        {error && <Alert variant="destructive">{error}</Alert>}
         <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={isLoading}>
@@ -261,9 +249,9 @@ function SchoolCalendar() {
     );
   } else if (isYearsError) {
     content = (
-      <p role="alert" className="mt-4 text-sm text-danger">
+      <Alert variant="destructive" className="mt-4">
         {apiErrorMessage(yearsError, 'Không tải được danh sách năm học')}
-      </p>
+      </Alert>
     );
   } else if (!selectedYear) {
     content = <p className="mt-4 text-sm text-fg-muted">Chưa có năm học nào</p>;
@@ -272,7 +260,7 @@ function SchoolCalendar() {
       <>
         <div className="mt-4 max-w-xs">
           <Label htmlFor="school-year-select">Năm học</Label>
-          <Select
+          <NativeSelect
             id="school-year-select"
             value={schoolYearId}
             onChange={(event) => setPickedYearId(event.target.value)}
@@ -282,7 +270,7 @@ function SchoolCalendar() {
                 {year.name}
               </option>
             ))}
-          </Select>
+          </NativeSelect>
         </div>
 
         <section className="mt-6">

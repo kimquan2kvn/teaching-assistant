@@ -2,11 +2,12 @@
 
 import { useId, useState } from 'react';
 import { MAX_PERIODS_PER_DAY, TIMETABLE_DAYS_OF_WEEK } from '@so-chu-nhiem/shared';
+import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { toDateOnly, weekdayLabel } from '@/lib/schedule';
 import { useCreateTimetableSlotMutation, useUpdateTimetableSlotMutation } from '@/lib/store/timetable-api';
 import { apiErrorMessage, todayDateOnly } from '@/lib/utils';
@@ -37,11 +38,11 @@ function SlotForm({ slot, isSaving, onSave }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor={`${baseId}-day`}>Thứ</Label>
-          <Select
+          <NativeSelect
             id={`${baseId}-day`}
             value={dayOfWeek}
             onChange={(event) => setDayOfWeek(Number(event.target.value))}
@@ -51,11 +52,11 @@ function SlotForm({ slot, isSaving, onSave }) {
                 {weekdayLabel(day)}
               </option>
             ))}
-          </Select>
+          </NativeSelect>
         </div>
         <div>
           <Label htmlFor={`${baseId}-period`}>Tiết</Label>
-          <Select
+          <NativeSelect
             id={`${baseId}-period`}
             value={period}
             onChange={(event) => setPeriod(Number(event.target.value))}
@@ -65,7 +66,7 @@ function SlotForm({ slot, isSaving, onSave }) {
                 {`Tiết ${value}`}
               </option>
             ))}
-          </Select>
+          </NativeSelect>
         </div>
       </div>
 
@@ -93,13 +94,9 @@ function SlotForm({ slot, isSaving, onSave }) {
 
       <p className="text-sm text-fg-muted">Lưu tiết sẽ tự xếp lại các buổi báo giảng chưa chốt của môn</p>
 
-      {error && (
-        <p role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      )}
+      {error && <Alert variant="destructive">{error}</Alert>}
 
-      <DialogFooter className="mt-0">
+      <DialogFooter>
         <DialogClose asChild>
           <Button type="button" variant="outline" disabled={isSaving}>
             Huỷ
@@ -137,7 +134,9 @@ export function SlotFormDialog({ open, onOpenChange, positionId, slot }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] overflow-y-auto">
-        <DialogTitle>{slot ? 'Sửa tiết' : 'Thêm tiết'}</DialogTitle>
+        <DialogHeader>
+          <DialogTitle>{slot ? 'Sửa tiết' : 'Thêm tiết'}</DialogTitle>
+        </DialogHeader>
         <SlotForm key={slot?._id ?? 'new'} slot={slot} isSaving={isSaving} onSave={handleSave} />
       </DialogContent>
     </Dialog>

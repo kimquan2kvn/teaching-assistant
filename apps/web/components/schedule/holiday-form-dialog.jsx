@@ -1,11 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Alert } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogHeader,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { useCreateHolidayMutation, useUpdateHolidayMutation } from '@/lib/store/school-calendar-api';
 import { HOLIDAY_TYPE_LABELS, toDateOnly } from '@/lib/schedule';
 import { apiErrorMessage } from '@/lib/utils';
@@ -46,13 +55,13 @@ function HolidayForm({ holiday, isSaving, onSave }) {
       </div>
       <div className="mb-4">
         <Label htmlFor="holiday-form-type">Loại</Label>
-        <Select id="holiday-form-type" value={type} onChange={(event) => setType(event.target.value)}>
+        <NativeSelect id="holiday-form-type" value={type} onChange={(event) => setType(event.target.value)}>
           {Object.entries(HOLIDAY_TYPE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
-        </Select>
+        </NativeSelect>
       </div>
       {/* Cố ý không đặt min/max: ngày kết thúc phải >= ngày bắt đầu do backend kiểm và trả 400. */}
       <div className="mb-4 grid gap-4 sm:grid-cols-2">
@@ -77,15 +86,15 @@ function HolidayForm({ holiday, isSaving, onSave }) {
           />
         </div>
       </div>
-      <p id={NOTE_ID} className="text-xs text-fg-muted">
+      <DialogDescription id={NOTE_ID} className="text-xs">
         Lưu ngày nghỉ sẽ tự tính lại sổ báo giảng của tất cả các môn (có thể mất vài giây)
-      </p>
+      </DialogDescription>
       {error && (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <Alert variant="destructive" className="mt-3">
           {error}
-        </p>
+        </Alert>
       )}
-      <DialogFooter>
+      <DialogFooter className="mt-4">
         <DialogClose asChild>
           <Button type="button" variant="outline" disabled={isSaving}>
             Huỷ
@@ -124,7 +133,9 @@ export function HolidayFormDialog({ open, onOpenChange, schoolYearId, holiday })
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent aria-describedby={NOTE_ID} className="max-h-[90vh] overflow-y-auto">
-        <DialogTitle>{holiday ? 'Sửa ngày nghỉ' : 'Thêm ngày nghỉ'}</DialogTitle>
+        <DialogHeader>
+          <DialogTitle>{holiday ? 'Sửa ngày nghỉ' : 'Thêm ngày nghỉ'}</DialogTitle>
+        </DialogHeader>
         <HolidayForm key={holiday?._id ?? 'new'} holiday={holiday} isSaving={isSaving} onSave={handleSave} />
       </DialogContent>
     </Dialog>

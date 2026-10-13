@@ -20,3 +20,25 @@ test('variant muted map đúng className màu fg-muted', () => {
   render(<Badge variant="muted">Trống</Badge>);
   expect(screen.getByText('Trống')).toHaveClass('text-fg-muted');
 });
+
+test('không truyền variant thì mặc định là muted (nhãn trung tính như bản cũ)', () => {
+  render(<Badge>Loại: CK</Badge>);
+  expect(screen.getByText('Loại: CK')).toHaveClass('text-fg-muted', 'bg-muted');
+});
+
+test('là phần tử inline (span) để đặt được trong đoạn văn/ô bảng; vẫn bo pill', () => {
+  render(<Badge variant="success">Đang giữ</Badge>);
+  const badge = screen.getByText('Đang giữ');
+  expect(badge.tagName).toBe('SPAN');
+  expect(badge).toHaveClass('rounded-full');
+});
+
+test.each([
+  ['default', 'bg-primary'],
+  ['secondary', 'bg-secondary'],
+  ['destructive', 'bg-destructive'],
+  ['outline', 'border-border'],
+])('variant shadcn %s vẫn dùng được', (variant, expectedClass) => {
+  render(<Badge variant={variant}>Nhãn</Badge>);
+  expect(screen.getByText('Nhãn')).toHaveClass(expectedClass);
+});

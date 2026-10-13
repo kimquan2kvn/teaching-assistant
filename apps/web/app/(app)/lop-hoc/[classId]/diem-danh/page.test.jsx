@@ -258,3 +258,19 @@ test('(g) ngày mặc định là ngày hôm nay theo giờ ĐỊA PHƯƠNG, kh�
 
   jest.useRealTimers();
 });
+
+test('dùng Table shadcn (khung cuộn ngang bao ngoài) và Alert shadcn cho lỗi tải điểm danh', () => {
+  getPositionAttendanceMock.mockReturnValue({
+    data: undefined,
+    isError: true,
+    error: { status: 500, data: { message: 'Không tải được dữ liệu điểm danh' } },
+  });
+
+  renderPage({ id: 'teacher-chu-nhiem', role: 'TEACHER' });
+
+  expect(screen.getByRole('table').parentElement).toHaveClass('overflow-auto');
+  expect(screen.getByRole('columnheader', { name: 'Họ tên' })).toHaveClass('h-10');
+  const alert = screen.getByRole('alert');
+  expect(alert).toHaveTextContent('Không tải được dữ liệu điểm danh');
+  expect(alert).toHaveClass('bg-danger-soft');
+});

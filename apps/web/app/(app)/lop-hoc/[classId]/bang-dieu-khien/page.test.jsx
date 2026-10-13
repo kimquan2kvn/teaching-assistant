@@ -154,3 +154,11 @@ test('query lỗi 403 hiện "Bạn không có quyền xem lớp này", không r
   expect(screen.getByText('Bạn không có quyền xem lớp này')).toBeInTheDocument();
   expect(screen.queryByText('Có mặt')).not.toBeInTheDocument();
 });
+
+test('dùng Table shadcn cho bảng vi phạm gần nhất và Input shadcn cho ô chọn ngày', () => {
+  renderPage();
+
+  expect(screen.getByRole('table').parentElement).toHaveClass('overflow-auto');
+  expect(screen.getByRole('columnheader', { name: 'Học sinh' })).toHaveClass('h-10');
+  expect(screen.getByLabelText('Chọn ngày')).toHaveClass('border-input');
+});

@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { MAX_VIOLATION_POINTS, MAX_MERIT_POINTS } from '@so-chu-nhiem/shared';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -110,20 +111,24 @@ export function ConductLogFormDialog({ open, onOpenChange, classId }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle>Ghi nhận vi phạm / điểm cộng</DialogTitle>
+        <DialogHeader>
+          <DialogTitle>Ghi nhận vi phạm / điểm cộng</DialogTitle>
+        </DialogHeader>
 
         {result ? (
           <div>
-            <div className="rounded-md bg-danger-soft p-3 text-sm text-danger">
-              <p className="font-medium">Đã tự tạo {result.punishments.length} chép phạt</p>
-              <ul className="mt-1 list-disc pl-4">
-                {result.punishments.map((p) => (
-                  <li key={p._id}>
-                    {p.lines} dòng — hạn nộp {formatDate(p.dueDate)}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <Alert variant="destructive" role="status">
+              <AlertDescription>
+                <p className="font-medium">Đã tự tạo {result.punishments.length} chép phạt</p>
+                <ul className="mt-1 list-disc pl-4">
+                  {result.punishments.map((p) => (
+                    <li key={p._id}>
+                      {p.lines} dòng — hạn nộp {formatDate(p.dueDate)}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
             <DialogFooter>
               <Button type="button" onClick={() => onOpenChange?.(false)}>
                 Đóng
@@ -134,7 +139,7 @@ export function ConductLogFormDialog({ open, onOpenChange, classId }) {
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <Label htmlFor="conduct-log-student">Học sinh</Label>
-              <Select
+              <NativeSelect
                 id="conduct-log-student"
                 value={studentId}
                 onChange={(event) => setStudentId(event.target.value)}
@@ -146,13 +151,13 @@ export function ConductLogFormDialog({ open, onOpenChange, classId }) {
                     {student.fullName}
                   </option>
                 ))}
-              </Select>
+              </NativeSelect>
             </div>
 
             {myPositions.length > 1 && (
               <div className="mb-4">
                 <Label htmlFor="conduct-log-position">Vị trí ghi</Label>
-                <Select
+                <NativeSelect
                   id="conduct-log-position"
                   value={positionId}
                   onChange={(event) => setPositionId(event.target.value)}
@@ -162,7 +167,7 @@ export function ConductLogFormDialog({ open, onOpenChange, classId }) {
                       {positionLabel(position)}
                     </option>
                   ))}
-                </Select>
+                </NativeSelect>
               </div>
             )}
 
@@ -223,10 +228,10 @@ export function ConductLogFormDialog({ open, onOpenChange, classId }) {
               <div className="mb-4 flex flex-col gap-4">
                 <div>
                   <Label htmlFor="conduct-log-kind">Loại</Label>
-                  <Select id="conduct-log-kind" value={kind} onChange={(event) => setKind(event.target.value)}>
+                  <NativeSelect id="conduct-log-kind" value={kind} onChange={(event) => setKind(event.target.value)}>
                     <option value="VIOLATION">Vi phạm</option>
                     <option value="MERIT">Điểm cộng</option>
-                  </Select>
+                  </NativeSelect>
                 </div>
                 <div>
                   <Label htmlFor="conduct-log-points">Điểm</Label>
@@ -257,7 +262,11 @@ export function ConductLogFormDialog({ open, onOpenChange, classId }) {
               </div>
             )}
 
-            {error && <p className="text-sm text-danger">{error}</p>}
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline">

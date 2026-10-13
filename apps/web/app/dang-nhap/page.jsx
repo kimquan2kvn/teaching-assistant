@@ -7,6 +7,7 @@ import { useLoginMutation } from '@/lib/store/api-slice';
 import { setCredentials } from '@/lib/store/auth-slice';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function DangNhapPage() {
   const [username, setUsername] = useState('');
@@ -44,7 +45,11 @@ export default function DangNhapPage() {
         onChange={(e) => setPassword(e.target.value)}
         required
       />
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
       <Button type="submit" disabled={isLoading}>
         Đăng nhập
       </Button>

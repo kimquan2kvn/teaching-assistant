@@ -4,8 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useGetTeacherPositionsQuery, useGetTeachersQuery } from '@/lib/store/admin-api';
 import { useReassignPositionMutation } from '@/lib/store/positions-api';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Select } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -68,9 +70,11 @@ export default function TeacherPositionsPage({ params }) {
         {isLoading && <p role="status">Đang tải...</p>}
 
         {!isLoading && error && (
-          <p className="text-sm text-danger">
-            {error?.data?.message ?? 'Không tải được danh sách vị trí, vui lòng thử lại'}
-          </p>
+          <Alert variant="destructive">
+            <AlertDescription>
+              {error?.data?.message ?? 'Không tải được danh sách vị trí, vui lòng thử lại'}
+            </AlertDescription>
+          </Alert>
         )}
 
         {!isLoading && !error && positions?.length === 0 && (
@@ -80,21 +84,25 @@ export default function TeacherPositionsPage({ params }) {
         {!isLoading && !error && positions?.length > 0 && (
           <ul className="grid gap-4 sm:grid-cols-2">
             {positions.map((position) => (
-              <li key={position.id} className="rounded-lg border border-border p-4">
-                <p className="font-heading text-lg font-semibold">{position.class.name}</p>
-                <p className="mt-1 text-sm text-fg-muted">{positionTypeLabel(position)}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {/* ADMIN không có API liệt kê lớp nên đây là lối vào duy nhất tới các trang theo lớp. */}
-                  <Link
-                    href={`/lop-hoc/${position.class.id}`}
-                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
-                  >
-                    Xem lớp
-                  </Link>
-                  <Button type="button" variant="outline" size="sm" onClick={() => openReassignDialog(position)}>
-                    Gán lại cho giáo viên khác
-                  </Button>
-                </div>
+              <li key={position.id}>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="font-heading text-lg font-semibold">{position.class.name}</p>
+                    <p className="mt-1 text-sm text-fg-muted">{positionTypeLabel(position)}</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {/* ADMIN không có API liệt kê lớp nên đây là lối vào duy nhất tới các trang theo lớp. */}
+                      <Link
+                        href={`/lop-hoc/${position.class.id}`}
+                        className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                      >
+                        Xem lớp
+                      </Link>
+                      <Button type="button" variant="outline" size="sm" onClick={() => openReassignDialog(position)}>
+                        Gán lại cho giáo viên khác
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </li>
             ))}
           </ul>
@@ -103,11 +111,13 @@ export default function TeacherPositionsPage({ params }) {
 
       <Dialog open={Boolean(activePosition)} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent>
-          <DialogTitle>Gán lại vị trí cho giáo viên khác</DialogTitle>
-          <form onSubmit={handleReassign} className="mt-4 flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>Gán lại vị trí cho giáo viên khác</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleReassign} className="flex flex-col gap-4">
             <div>
               <Label htmlFor="targetTeacher">Giáo viên mới</Label>
-              <Select
+              <NativeSelect
                 id="targetTeacher"
                 value={targetTeacherId}
                 onChange={(e) => setTargetTeacherId(e.target.value)}
@@ -118,10 +128,14 @@ export default function TeacherPositionsPage({ params }) {
                     {t.fullName}
                   </option>
                 ))}
-              </Select>
+              </NativeSelect>
             </div>
 
-            {reassignError && <p className="text-sm text-danger">{reassignError}</p>}
+            {reassignError && (
+              <Alert variant="destructive">
+                <AlertDescription>{reassignError}</AlertDescription>
+              </Alert>
+            )}
 
             <DialogFooter>
               <DialogClose className={cn(buttonVariants({ variant: 'outline' }))}>Huỷ</DialogClose>

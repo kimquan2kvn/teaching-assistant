@@ -7,7 +7,8 @@ import { useGetStudentsQuery } from '@/lib/store/students-api';
 import { useGetConductCatalogQuery } from '@/lib/store/conduct-catalog-api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { NativeSelect } from '@/components/ui/native-select';
 import { buildIdNameMap, formatDate, formatSignedPoints } from '@/lib/utils';
 import { ConductLogFormDialog } from '@/components/conduct/conduct-log-form-dialog';
 
@@ -52,48 +53,48 @@ export default function ViPhamPage() {
       </div>
 
       <div className="mt-4 max-w-xs">
-        <Select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)}>
+        <NativeSelect value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)}>
           <option value="">Tất cả học sinh</option>
           {(students ?? []).map((student) => (
             <option key={student._id} value={student._id}>
               {student.fullName}
             </option>
           ))}
-        </Select>
+        </NativeSelect>
       </div>
 
       {logsLoading ? (
         <p className="mt-4 text-sm text-fg-muted">Đang tải...</p>
       ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-fg-muted">
-                <th className="py-2 pr-4">Ngày</th>
-                <th className="py-2 pr-4">Học sinh</th>
-                <th className="py-2 pr-4">Lý do</th>
-                <th className="py-2 pr-4">Điểm</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="mt-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ngày</TableHead>
+                <TableHead>Học sinh</TableHead>
+                <TableHead>Lý do</TableHead>
+                <TableHead>Điểm</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {(logs ?? []).map((log) => (
-                <tr key={log._id} className="border-t border-border">
-                  <td className="py-2 pr-4">{formatDate(log.date)}</td>
-                  <td className="py-2 pr-4">{studentMap.get(String(log.studentId)) ?? '—'}</td>
-                  <td className="py-2 pr-4">
+                <TableRow key={log._id}>
+                  <TableCell>{formatDate(log.date)}</TableCell>
+                  <TableCell>{studentMap.get(String(log.studentId)) ?? '—'}</TableCell>
+                  <TableCell>
                     {log.catalogItemId
                       ? catalogMap.get(String(log.catalogItemId)) ?? log.note ?? '—'
                       : log.note}
-                  </td>
-                  <td className="py-2 pr-4">
+                  </TableCell>
+                  <TableCell>
                     <Badge variant={log.points > 0 ? 'success' : 'danger'}>
                       {formatSignedPoints(log.points)}
                     </Badge>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 

@@ -29,12 +29,14 @@ test('thông báo thành công hiện dạng role=status', () => {
   render(<LessonLogFeedback {...makeProps({ flow: { notice: NOTICE } })} />);
 
   expect(screen.getByRole('status')).toHaveTextContent(NOTICE);
+  expect(screen.getByRole('status')).toHaveClass('bg-success-soft');
 });
 
 test('lỗi của thao tác kéo-thả/tích hiện dạng role=alert khi không có hộp thoại', () => {
   render(<LessonLogFeedback {...makeProps({ actions: { error: ERROR } })} />);
 
   expect(screen.getByRole('alert')).toHaveTextContent(ERROR);
+  expect(screen.getByRole('alert')).toHaveClass('bg-danger-soft', 'text-destructive');
 });
 
 describe('hộp thoại "Chuyển ngày" đang mở', () => {
@@ -54,8 +56,9 @@ describe('hộp thoại "Chuyển ngày" đang mở', () => {
     render(<LessonLogFeedback {...makeProps({ actions: { error: ERROR, errorLogId: 'buoi-khac' }, flow: { movingLog: log } })} />);
 
     // Hộp thoại modal đặt aria-hidden cho phần còn lại của trang nên tìm theo chữ, không theo role.
-    const banner = screen.getByText(ERROR);
-    expect(banner).toHaveAttribute('role', 'alert');
+    const banner = screen.getByText(ERROR).closest('[role="alert"]');
+    expect(banner).not.toBeNull();
+    expect(banner).toHaveClass('bg-danger-soft', 'text-destructive');
     expect(banner.closest('[role="dialog"]')).toBeNull();
   });
 

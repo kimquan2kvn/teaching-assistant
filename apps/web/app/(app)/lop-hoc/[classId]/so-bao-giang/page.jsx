@@ -5,9 +5,10 @@ import { useSelector } from 'react-redux';
 import { useGetClassDetailQuery } from '@/lib/store/classes-api';
 import { useGetPositionLessonLogsQuery } from '@/lib/store/lesson-logs-api';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { LessonLogCard } from '@/components/schedule/lesson-log-card';
 import { LessonLogFeedback } from '@/components/schedule/lesson-log-feedback';
 import { LessonWeekBoard } from '@/components/schedule/lesson-week-board';
@@ -158,9 +159,11 @@ export default function ClassLessonLogsPage({ params, searchParams }) {
   function renderLogs() {
     if (logsQuery.isError) {
       return (
-        <p role="alert" className="mt-4 text-sm text-danger">
-          {apiErrorMessage(logsQuery.error, 'Không tải được sổ báo giảng, vui lòng thử lại')}
-        </p>
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>
+            {apiErrorMessage(logsQuery.error, 'Không tải được sổ báo giảng, vui lòng thử lại')}
+          </AlertDescription>
+        </Alert>
       );
     }
     if (!logs) {
@@ -213,13 +216,13 @@ export default function ClassLessonLogsPage({ params, searchParams }) {
         {positions.length > 1 ? (
           <div className="w-48">
             <Label htmlFor={subjectSelectId}>Môn</Label>
-            <Select id={subjectSelectId} value={positionId} onChange={handlePositionChange}>
+            <NativeSelect id={subjectSelectId} value={positionId} onChange={handlePositionChange}>
               {positions.map((candidate) => (
                 <option key={candidate.id} value={candidate.id}>
                   {candidate.subject}
                 </option>
               ))}
-            </Select>
+            </NativeSelect>
           </div>
         ) : (
           <p className="flex h-10 items-center gap-2 text-sm">

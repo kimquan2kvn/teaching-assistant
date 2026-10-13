@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useGetStudentsQuery } from '@/lib/store/students-api';
 import { useGetClassConductRatingQuery } from '@/lib/store/conduct-rating-api';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { buildIdNameMap } from '@/lib/utils';
@@ -75,29 +76,29 @@ export default function XepLoaiPage() {
       {isLoading ? (
         <p className="mt-4 text-sm text-fg-muted">Đang tải...</p>
       ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-fg-muted">
-                <th className="py-2 pr-4">STT</th>
-                <th className="py-2 pr-4">Học sinh</th>
-                <th className="py-2 pr-4">Điểm</th>
-                <th className="py-2 pr-4">Xếp loại</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="mt-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>STT</TableHead>
+                <TableHead>Học sinh</TableHead>
+                <TableHead>Điểm</TableHead>
+                <TableHead>Xếp loại</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {sortedRating.map((row, index) => (
-                <tr key={row.studentId} className="border-t border-border">
-                  <td className="py-2 pr-4">{index + 1}</td>
-                  <td className="py-2 pr-4">{nameById.get(row.studentId) ?? '—'}</td>
-                  <td className="py-2 pr-4 font-mono">{row.score}</td>
-                  <td className="py-2 pr-4">
+                <TableRow key={row.studentId}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{nameById.get(row.studentId) ?? '—'}</TableCell>
+                  <TableCell className="font-mono">{row.score}</TableCell>
+                  <TableCell>
                     <Badge variant={LABEL_VARIANT[row.label] ?? 'muted'}>{row.label}</Badge>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

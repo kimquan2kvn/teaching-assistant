@@ -7,12 +7,16 @@ import { useLazyGetClassByCodeQuery } from '@/lib/store/classes-api';
 import { useJoinPositionMutation } from '@/lib/store/positions-api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 
 // Backend trả 409 khi 2 giáo viên cùng nhận 1 vị trí đúng lúc race (findOneAndUpdate nguyên tử phía service) —
 // phải phân biệt nhánh này khỏi các lỗi khác để tự làm mới danh sách taken/trống thay vì để người dùng bấm lại
 // vào 1 lựa chọn đã bị người khác nhận trước đó.
 const CONFLICT_STATUS = 409;
+
+// Ô chọn vị trí/môn: giữ dạng ô chữ nhật, chữ căn trái, cho xuống dòng thay vì dạng pill 1 dòng của Button.
+const TILE_CLASS = 'h-auto justify-start whitespace-normal rounded-md px-3 py-2 text-left';
 
 export default function ThamGiaLopPage() {
   const [code, setCode] = useState('');
@@ -98,7 +102,11 @@ export default function ThamGiaLopPage() {
           Tra cứu
         </Button>
       </form>
-      {lookupError && <p className="text-sm text-danger">{lookupError}</p>}
+      {lookupError && (
+        <Alert variant="destructive">
+          <AlertDescription>{lookupError}</AlertDescription>
+        </Alert>
+      )}
 
       {classInfo && (
         <form onSubmit={handleJoin} className="flex flex-col gap-4">
@@ -106,19 +114,20 @@ export default function ThamGiaLopPage() {
             Lớp: <span className="font-medium text-fg">{classInfo.class.name}</span>
           </p>
 
-          <button
+          <Button
             type="button"
+            variant="outline"
             disabled={homeroomTaken}
             aria-pressed={selectedType === 'HOMEROOM'}
             onClick={selectHomeroom}
             className={cn(
-              'rounded-md border border-border px-3 py-2 text-left text-sm',
-              homeroomTaken ? 'cursor-not-allowed text-fg-muted opacity-50' : 'hover:bg-black/5',
-              selectedType === 'HOMEROOM' && 'border-brand bg-brand-soft',
+              TILE_CLASS,
+              homeroomTaken && 'text-fg-muted',
+              selectedType === 'HOMEROOM' && 'border-brand bg-brand-soft hover:bg-brand-soft',
             )}
           >
             Làm GVCN
-          </button>
+          </Button>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {SUBJECTS.map((subject) => {
@@ -126,26 +135,31 @@ export default function ThamGiaLopPage() {
               const taken = position?.taken ?? false;
               const isSelected = selectedType === 'SUBJECT' && selectedSubject === subject;
               return (
-                <button
+                <Button
                   key={subject}
                   type="button"
+                  variant="outline"
                   disabled={taken}
                   aria-pressed={isSelected}
                   onClick={() => selectSubject(subject)}
                   className={cn(
-                    'rounded-md border border-border px-3 py-2 text-left text-sm',
-                    taken ? 'cursor-not-allowed text-fg-muted opacity-50' : 'hover:bg-black/5',
-                    isSelected && 'border-brand bg-brand-soft',
+                    TILE_CLASS,
+                    taken && 'text-fg-muted',
+                    isSelected && 'border-brand bg-brand-soft hover:bg-brand-soft',
                   )}
                 >
                   {subject}
                   {taken && <span className="ml-1 text-xs italic">Đã có người giữ</span>}
-                </button>
+                </Button>
               );
             })}
           </div>
 
-          {joinError && <p className="text-sm text-danger">{joinError}</p>}
+          {joinError && (
+            <Alert variant="destructive">
+              <AlertDescription>{joinError}</AlertDescription>
+            </Alert>
+          )}
 
           <Button type="submit" disabled={!canSubmit || isJoining}>
             Tham gia

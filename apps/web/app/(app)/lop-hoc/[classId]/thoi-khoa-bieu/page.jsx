@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import { SlotPanel } from '@/components/schedule/slot-panel';
 import { useSelectedPosition } from '@/components/schedule/use-selected-position';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { useGetClassDetailQuery } from '@/lib/store/classes-api';
 import { apiErrorMessage, canEditPosition, getReadableSubjectPositions } from '@/lib/utils';
@@ -60,7 +60,7 @@ export default function ClassTimetablePage({ params, searchParams }) {
             {positions.length > 1 ? (
               <>
                 <Label htmlFor="thoi-khoa-bieu-mon">Môn</Label>
-                <Select
+                <NativeSelect
                   id="thoi-khoa-bieu-mon"
                   value={positionId}
                   onChange={(event) => setPositionId(event.target.value)}
@@ -70,7 +70,7 @@ export default function ClassTimetablePage({ params, searchParams }) {
                       {candidate.subject}
                     </option>
                   ))}
-                </Select>
+                </NativeSelect>
               </>
             ) : (
               <p className="text-sm">

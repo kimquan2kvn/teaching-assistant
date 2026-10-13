@@ -8,9 +8,11 @@ import { SlotPanel } from '@/components/schedule/slot-panel';
 import { TimetableGrid } from '@/components/schedule/timetable-grid';
 import { useSelectedPosition } from '@/components/schedule/use-selected-position';
 import { WeekNav } from '@/components/schedule/week-nav';
+import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { getWeekDays, getWeekStart, isSlotActiveOn } from '@/lib/schedule';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { useGetSchoolYearsQuery, useGetHolidaysQuery } from '@/lib/store/school-calendar-api';
@@ -69,9 +71,9 @@ function TeacherTimetable() {
   let weekContent;
   if (isError) {
     weekContent = (
-      <p role="alert" className="mt-4 text-sm text-danger">
+      <Alert variant="destructive" className="mt-4">
         {apiErrorMessage(error, 'Không tải được thời khóa biểu, vui lòng thử lại')}
-      </p>
+      </Alert>
     );
   } else if (isLoading) {
     weekContent = (
@@ -105,23 +107,29 @@ function TeacherTimetable() {
       </div>
 
       {hasNoSubject && (
-        <div className="mt-4 rounded-lg border border-dashed border-border p-4">
-          <p className="text-sm">{NO_SUBJECT_TEXT}</p>
-          <Link href="/lop-hoc/tham-gia" className={cn(buttonVariants({ variant: 'default' }), 'mt-3')}>
-            Tham gia lớp
-          </Link>
-        </div>
+        <Card className="mt-4 border-dashed shadow-none">
+          <CardContent className="p-4">
+            <p className="text-sm">{NO_SUBJECT_TEXT}</p>
+            <Link href="/lop-hoc/tham-gia" className={cn(buttonVariants({ variant: 'default' }), 'mt-3')}>
+              Tham gia lớp
+            </Link>
+          </CardContent>
+        </Card>
       )}
 
       {isPositionsError && (
-        <p role="alert" className="mt-4 text-sm text-danger">
+        <Alert variant="destructive" className="mt-4">
           {apiErrorMessage(positionsError, 'Không tải được danh sách môn, vui lòng thử lại')}
-        </p>
+        </Alert>
       )}
 
       {isWeekEmpty && <p className="mt-4 text-sm text-fg-muted">{EMPTY_WEEK_TEXT}</p>}
 
-      {(isSchoolYearsError || isHolidaysError) && <p className="mt-4 text-sm text-danger">{HOLIDAY_WARNING}</p>}
+      {(isSchoolYearsError || isHolidaysError) && (
+        <Alert variant="destructive" role="status" className="mt-4">
+          {HOLIDAY_WARNING}
+        </Alert>
+      )}
 
       {weekContent}
 
@@ -130,7 +138,7 @@ function TeacherTimetable() {
           <h2 className="font-heading text-lg font-semibold">Khai báo tiết</h2>
           <div className="mt-3 max-w-xs">
             <Label htmlFor="thoi-khoa-bieu-mon">Môn</Label>
-            <Select
+            <NativeSelect
               id="thoi-khoa-bieu-mon"
               value={positionId}
               onChange={(event) => setPositionId(event.target.value)}
@@ -140,7 +148,7 @@ function TeacherTimetable() {
                   {`${position.class.name} — ${position.subject}`}
                 </option>
               ))}
-            </Select>
+            </NativeSelect>
           </div>
           <div className="mt-4">
             <SlotPanel positionId={positionId} canEdit />

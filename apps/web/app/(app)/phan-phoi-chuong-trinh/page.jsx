@@ -6,7 +6,10 @@ import { useGetMyPositionsQuery } from '@/lib/store/positions-api';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { RoleGate } from '@/components/layout/role-gate';
 import { getSubjectColor } from '@/components/schedule/subject-colors';
+import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { apiErrorMessage, cn } from '@/lib/utils';
 
 const LOAD_ERROR_FALLBACK = 'Không tải được danh sách môn, vui lòng thử lại';
@@ -21,26 +24,30 @@ const SUBJECT_DESTINATIONS = [
 function SubjectCard({ position }) {
   const { class: klass } = position;
   return (
-    <li className="rounded-lg border border-border p-4">
-      <h2 className="font-heading text-lg font-semibold">{klass.name}</h2>
-      <p className="mt-1 flex items-center gap-2 text-sm">
-        <span
-          aria-hidden="true"
-          className={cn('h-2.5 w-2.5 shrink-0 rounded-full', getSubjectColor(position.subject).dot)}
-        />
-        <span className="font-medium text-fg">{position.subject}</span>
-      </p>
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        {SUBJECT_DESTINATIONS.map(({ label, segment }) => (
-          <Link
-            key={segment}
-            href={`/lop-hoc/${klass.id}/${segment}?positionId=${position.id}`}
-            className={buttonVariants({ variant: 'outline' })}
-          >
-            {label}
-          </Link>
-        ))}
-      </div>
+    <li>
+      <Card className="h-full">
+        <CardContent className="p-4">
+          <h2 className="font-heading text-lg font-semibold">{klass.name}</h2>
+          <p className="mt-1 flex items-center gap-2 text-sm">
+            <span
+              aria-hidden="true"
+              className={cn('h-2.5 w-2.5 shrink-0 rounded-full', getSubjectColor(position.subject).dot)}
+            />
+            <span className="font-medium text-fg">{position.subject}</span>
+          </p>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {SUBJECT_DESTINATIONS.map(({ label, segment }) => (
+              <Link
+                key={segment}
+                href={`/lop-hoc/${klass.id}/${segment}?positionId=${position.id}`}
+                className={buttonVariants({ variant: 'outline' })}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </li>
   );
 }
@@ -59,16 +66,18 @@ function HomeroomHint() {
 
 function NoSubjectState({ hasHomeroom }) {
   return (
-    <div className="rounded-lg border border-dashed border-border p-8 text-center">
-      <p className="text-lg font-semibold">Bạn chưa giữ môn nào</p>
-      <p className="mt-2 text-fg-muted">Tham gia lớp bằng mã lớp và chọn môn bạn dạy để bắt đầu.</p>
-      <div className="mt-4">
-        <Link href="/lop-hoc/tham-gia" className={buttonVariants({ variant: 'default' })}>
-          Tham gia bằng mã lớp
-        </Link>
-      </div>
-      {hasHomeroom && <HomeroomHint />}
-    </div>
+    <Card className="border-dashed shadow-none">
+      <CardContent className="p-8 text-center">
+        <p className="text-lg font-semibold">Bạn chưa giữ môn nào</p>
+        <p className="mt-2 text-fg-muted">Tham gia lớp bằng mã lớp và chọn môn bạn dạy để bắt đầu.</p>
+        <div className="mt-4">
+          <Link href="/lop-hoc/tham-gia" className={buttonVariants({ variant: 'default' })}>
+            Tham gia bằng mã lớp
+          </Link>
+        </div>
+        {hasHomeroom && <HomeroomHint />}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -76,7 +85,7 @@ function SubjectListSkeleton() {
   return (
     <div role="status" aria-label="Đang tải danh sách môn" className="grid gap-4 sm:grid-cols-2">
       {[0, 1].map((key) => (
-        <div key={key} className="h-40 animate-pulse rounded-lg bg-black/5" />
+        <Skeleton key={key} className="h-40 rounded-[10px]" />
       ))}
     </div>
   );
@@ -89,9 +98,7 @@ function TeacherSubjects() {
 
   if (error) {
     return (
-      <p role="alert" className="text-sm text-danger">
-        {apiErrorMessage(error, LOAD_ERROR_FALLBACK)}
-      </p>
+      <Alert variant="destructive">{apiErrorMessage(error, LOAD_ERROR_FALLBACK)}</Alert>
     );
   }
 
@@ -114,9 +121,11 @@ function TeacherSubjects() {
 
 function AdminGuide() {
   return (
-    <p className="rounded-lg border border-border p-4 text-sm text-fg-muted">
-      Quản trị viên mở PPCT của từng môn từ trang chi tiết lớp (Quản lý giáo viên → chọn giáo viên → Xem lớp).
-    </p>
+    <Card>
+      <CardContent className="p-4 text-sm text-fg-muted">
+        Quản trị viên mở PPCT của từng môn từ trang chi tiết lớp (Quản lý giáo viên → chọn giáo viên → Xem lớp).
+      </CardContent>
+    </Card>
   );
 }
 

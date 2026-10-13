@@ -1,5 +1,6 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MoveLogDialog } from './move-log-dialog';
 
 // Phần phản hồi chung của hai trang sổ báo giảng sau khi ghi: thông báo thành công, lỗi của thao tác tích/kéo-thả và
@@ -12,15 +13,15 @@ export function LessonLogFeedback({ actions, flow }) {
   return (
     <>
       {flow.notice && (
-        <p role="status" className="mt-4 rounded-md bg-success-soft px-3 py-2 text-sm">
-          {flow.notice}
-        </p>
+        <Alert role="status" variant="success" className="mt-4">
+          <AlertDescription>{flow.notice}</AlertDescription>
+        </Alert>
       )}
       {/* Lỗi của buổi đang mở hộp thoại hiện ngay trong hộp thoại nên không lặp lại ở đây. */}
       {actions.error && !isErrorInDialog && (
-        <p role="alert" className="mt-4 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
-          {actions.error}
-        </p>
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>{actions.error}</AlertDescription>
+        </Alert>
       )}
       {movingLog && (
         <MoveLogDialog

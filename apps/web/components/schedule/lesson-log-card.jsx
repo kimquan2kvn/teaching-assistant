@@ -3,6 +3,9 @@
 import { useId } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { getPeriodKind } from '@/lib/ppct';
 import { getWeekDays, getWeekStart, toDateOnly, weekdayLabel } from '@/lib/schedule';
 import { cn, formatDate } from '@/lib/utils';
@@ -41,11 +44,11 @@ export function LessonLogCard({
   const dateOnly = toDateOnly(log.date);
 
   return (
-    <div
+    <Card
       data-log-id={log._id}
       aria-busy={busy || undefined}
       className={cn(
-        'flex flex-col gap-2 rounded-lg border border-border bg-white p-3 text-sm shadow-sm',
+        'flex flex-col gap-2 bg-white p-3 text-sm',
         color?.cell,
         dragHandlers?.draggable && 'cursor-grab',
         busy && 'opacity-60',
@@ -77,17 +80,15 @@ export function LessonLogCard({
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
         {canEdit ? (
           <>
-            <label className="flex min-h-8 cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-brand"
+            <Label className="mb-0 flex min-h-8 cursor-pointer items-center gap-2 font-normal leading-normal">
+              <Checkbox
                 aria-label={`Đã thực hiện: ${title}`}
                 checked={isDone}
                 disabled={busy}
-                onChange={(event) => onToggleDone(log, event.target.checked)}
+                onCheckedChange={(checked) => onToggleDone(log, checked === true)}
               />
               <span>Đã thực hiện</span>
-            </label>
+            </Label>
             <Button
               type="button"
               variant="outline"
@@ -103,6 +104,6 @@ export function LessonLogCard({
           <Badge variant={isDone ? 'success' : 'muted'}>{isDone ? 'Đã thực hiện' : 'Chưa thực hiện'}</Badge>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

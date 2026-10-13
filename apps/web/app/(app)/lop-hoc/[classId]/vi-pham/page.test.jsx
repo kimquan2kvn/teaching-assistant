@@ -150,3 +150,10 @@ test('không có quyền xem lớp này (403) → hiện đúng trang lỗi, KH�
   expect(screen.getByText('Bạn không có quyền xem lớp này')).toBeInTheDocument();
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
 });
+
+test('dùng Table shadcn cho bảng nhật ký', () => {
+  renderPage();
+
+  expect(screen.getByRole('table').parentElement).toHaveClass('overflow-auto');
+  expect(screen.getByRole('columnheader', { name: 'Lý do' })).toHaveClass('h-10');
+});

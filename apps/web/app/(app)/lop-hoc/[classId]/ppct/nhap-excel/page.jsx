@@ -11,9 +11,11 @@ import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { toCommitRow, validatePpctRow } from '@/lib/ppct';
 import { apiErrorMessage, canEditPosition, cn } from '@/lib/utils';
 import { RoleGate } from '@/components/layout/role-gate';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const [HEADER_WEEK, HEADER_TITLE, HEADER_PERIOD_COUNT, HEADER_PERIOD_LABEL, HEADER_REQUIREMENT, HEADER_NOTE] =
   PPCT_IMPORT_HEADERS;
@@ -63,10 +65,10 @@ const PreviewRow = memo(function PreviewRow({ row, isEdited, onCellChange, onDel
 
   return (
     <>
-      <tr className={hasErrors ? 'bg-danger-soft' : 'border-b border-border'}>
-        <td className="px-2 py-1 font-mono text-fg-muted">{row.rowNumber}</td>
+      <TableRow className={hasErrors ? 'border-b-0 bg-danger-soft hover:bg-danger-soft' : undefined}>
+        <TableCell className="font-mono text-fg-muted">{row.rowNumber}</TableCell>
         {CELLS.map(({ field, header, widthClass, isNumeric }) => (
-          <td key={field} className={cn('px-1 py-1', widthClass)}>
+          <TableCell key={field} className={cn('px-1 py-1', widthClass)}>
             <Input
               aria-label={`${header} (dòng ${row.rowNumber})`}
               aria-describedby={hasErrors ? errorsId : undefined}
@@ -75,25 +77,25 @@ const PreviewRow = memo(function PreviewRow({ row, isEdited, onCellChange, onDel
               value={row[field]}
               onChange={(event) => onCellChange(row.rowNumber, field, event.target.value)}
             />
-          </td>
+          </TableCell>
         ))}
-        <td className="px-1 py-1">
+        <TableCell className="px-1 py-1">
           <Button type="button" variant="ghost" size="sm" onClick={() => onDelete(row.rowNumber)}>
             <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
             Xóa dòng
           </Button>
-        </td>
-      </tr>
+        </TableCell>
+      </TableRow>
       {hasErrors && (
-        <tr className="border-b border-border bg-danger-soft">
-          <td colSpan={CELLS.length + 2} className="px-2 pb-2">
+        <TableRow className="bg-danger-soft hover:bg-danger-soft">
+          <TableCell colSpan={CELLS.length + 2} className="pb-2 pt-0">
             <ul id={errorsId} className="text-xs text-danger">
               {errors.map((message) => (
                 <li key={message}>{message}</li>
               ))}
             </ul>
-          </td>
-        </tr>
+          </TableCell>
+        </TableRow>
       )}
     </>
   );
@@ -181,7 +183,7 @@ function ImportPpctWizard({ classId, positionId, subject, classLabel }) {
       <form onSubmit={handlePreviewSubmit} className="mt-4 flex flex-wrap items-end gap-3">
         <div>
           <Label htmlFor="ppct-import-file">Chọn file Excel</Label>
-          <input
+          <Input
             id="ppct-import-file"
             type="file"
             accept=".xlsx"
@@ -194,9 +196,9 @@ function ImportPpctWizard({ classId, positionId, subject, classLabel }) {
       </form>
 
       {previewError && (
-        <p role="alert" className="mt-2 text-sm text-danger">
-          {previewError}
-        </p>
+        <Alert variant="destructive" className="mt-2">
+          <AlertDescription>{previewError}</AlertDescription>
+        </Alert>
       )}
 
       {rows && (
@@ -204,43 +206,41 @@ function ImportPpctWizard({ classId, positionId, subject, classLabel }) {
           {rows.length === 0 ? (
             <p className="text-sm text-fg-muted">Không có dòng nào để nhập</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border text-fg-muted">
-                    <th className="px-2 py-2 font-medium">Dòng</th>
-                    {CELLS.map(({ field, header, widthClass }) => (
-                      <th key={field} className={cn('px-2 py-2 font-medium', widthClass)}>
-                        {header}
-                      </th>
-                    ))}
-                    <th className="px-2 py-2">
-                      <span className="sr-only">Thao tác</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <PreviewRow
-                      key={row.rowNumber}
-                      row={row}
-                      isEdited={editedRowNumbers.has(row.rowNumber)}
-                      onCellChange={handleCellChange}
-                      onDelete={handleDeleteRow}
-                    />
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Dòng</TableHead>
+                  {CELLS.map(({ field, header, widthClass }) => (
+                    <TableHead key={field} className={widthClass}>
+                      {header}
+                    </TableHead>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                  <TableHead>
+                    <span className="sr-only">Thao tác</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <PreviewRow
+                    key={row.rowNumber}
+                    row={row}
+                    isEdited={editedRowNumbers.has(row.rowNumber)}
+                    onCellChange={handleCellChange}
+                    onDelete={handleDeleteRow}
+                  />
+                ))}
+              </TableBody>
+            </Table>
           )}
 
           {errorRowCount > 0 && (
             <p className="mt-4 text-sm text-danger">Còn {errorRowCount} dòng lỗi, hãy sửa hoặc xóa trước khi nhập</p>
           )}
           {confirmError && (
-            <p role="alert" className="mt-2 text-sm text-danger">
-              {confirmError}
-            </p>
+            <Alert variant="destructive" className="mt-2">
+              <AlertDescription>{confirmError}</AlertDescription>
+            </Alert>
           )}
           <Button type="button" className="mt-4" disabled={!canConfirm} onClick={handleConfirm}>
             Xác nhận nhập

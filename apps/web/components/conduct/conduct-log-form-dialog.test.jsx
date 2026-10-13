@@ -185,3 +185,37 @@ test('submit thất bại hiện đúng error.data.message, dialog không đóng
   ).toBeInTheDocument();
   expect(onOpenChange).not.toHaveBeenCalledWith(false);
 });
+
+test('lỗi submit hiện bằng Alert shadcn (role=alert, biến thể destructive)', async () => {
+  createConductLogMock.mockReturnValue({
+    unwrap: () => Promise.reject({ status: 400, data: { message: 'Ghi nhận bị từ chối' } }),
+  });
+  renderDialog();
+
+  await userEvent.selectOptions(screen.getByLabelText('Học sinh'), 's1');
+  await userEvent.click(screen.getByRole('button', { name: /Nói chuyện riêng/ }));
+  await userEvent.click(screen.getByRole('button', { name: 'Ghi nhận' }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent('Ghi nhận bị từ chối');
+  expect(alert).toHaveClass('bg-danger-soft');
+});
+
+test('banner chép phạt tự tạo là Alert shadcn role=status', async () => {
+  createConductLogMock.mockReturnValue({
+    unwrap: () =>
+      Promise.resolve({
+        conductLog: { _id: 'cl1', points: -5 },
+        punishments: [{ _id: 'pu1', kind: 'WEEKLY_THRESHOLD', lines: 20, dueDate: '2026-10-20T00:00:00.000Z' }],
+      }),
+  });
+  renderDialog();
+
+  await userEvent.selectOptions(screen.getByLabelText('Học sinh'), 's1');
+  await userEvent.click(screen.getByRole('button', { name: /Nói chuyện riêng/ }));
+  await userEvent.click(screen.getByRole('button', { name: 'Ghi nhận' }));
+
+  const banner = await screen.findByRole('status');
+  expect(banner).toHaveTextContent('Đã tự tạo 1 chép phạt');
+  expect(banner).toHaveClass('bg-danger-soft');
+});

@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useTransferStudentMutation } from '@/lib/store/students-api';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { todayDateOnly } from '@/lib/utils';
 
 // Props: open (bool), onOpenChange(bool) — điều khiển ẩn/hiện từ component cha (vd roster page);
@@ -37,8 +38,10 @@ export function TransferDialog({ open, onOpenChange, classId, studentId, student
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle>Đánh dấu chuyển đi{studentName ? ` — ${studentName}` : ''}</DialogTitle>
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+        <DialogHeader>
+          <DialogTitle>Đánh dấu chuyển đi{studentName ? ` — ${studentName}` : ''}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <Label htmlFor="transferDate">Ngày chuyển đi</Label>
             <Input
@@ -58,7 +61,11 @@ export function TransferDialog({ open, onOpenChange, classId, studentId, student
               required
             />
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">
