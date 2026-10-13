@@ -98,3 +98,10 @@ test('lỗi 403 (IDOR, không giữ vị trí nào của lớp) hiện đúng co
   expect(screen.getByText('Bạn không có quyền xem lớp này')).toBeInTheDocument();
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
 });
+
+test('dùng Table shadcn cho bảng xếp loại', () => {
+  render(<XepLoaiPage />);
+
+  expect(screen.getByRole('table').parentElement).toHaveClass('overflow-auto');
+  expect(screen.getByRole('columnheader', { name: 'Xếp loại' })).toHaveClass('h-10');
+});

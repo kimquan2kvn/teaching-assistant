@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { MAX_VIOLATION_POINTS, MAX_MERIT_POINTS } from '@so-chu-nhiem/shared';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Input } from '@/components/ui/input';
@@ -110,20 +111,24 @@ export function ConductLogFormDialog({ open, onOpenChange, classId }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle>Ghi nhận vi phạm / điểm cộng</DialogTitle>
+        <DialogHeader>
+          <DialogTitle>Ghi nhận vi phạm / điểm cộng</DialogTitle>
+        </DialogHeader>
 
         {result ? (
           <div>
-            <div className="rounded-md bg-danger-soft p-3 text-sm text-danger">
-              <p className="font-medium">Đã tự tạo {result.punishments.length} chép phạt</p>
-              <ul className="mt-1 list-disc pl-4">
-                {result.punishments.map((p) => (
-                  <li key={p._id}>
-                    {p.lines} dòng — hạn nộp {formatDate(p.dueDate)}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <Alert variant="destructive" role="status">
+              <AlertDescription>
+                <p className="font-medium">Đã tự tạo {result.punishments.length} chép phạt</p>
+                <ul className="mt-1 list-disc pl-4">
+                  {result.punishments.map((p) => (
+                    <li key={p._id}>
+                      {p.lines} dòng — hạn nộp {formatDate(p.dueDate)}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
             <DialogFooter>
               <Button type="button" onClick={() => onOpenChange?.(false)}>
                 Đóng
@@ -257,7 +262,11 @@ export function ConductLogFormDialog({ open, onOpenChange, classId }) {
               </div>
             )}
 
-            {error && <p className="text-sm text-danger">{error}</p>}
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline">

@@ -178,3 +178,20 @@ test('tab lọc trạng thái gọi lại useGetClassPunishmentsQuery với đú
   await userEvent.click(screen.getByRole('button', { name: 'Tất cả' }));
   expect(getClassPunishmentsMock).toHaveBeenCalledWith({ classId: 'class-1', status: undefined });
 });
+
+test('dùng Table shadcn cho bảng chép phạt và Alert shadcn cho lỗi trong hộp thoại', async () => {
+  updatePunishmentStatusMock.mockReturnValue({
+    unwrap: () => Promise.reject({ status: 400, data: { message: 'Không đổi được trạng thái' } }),
+  });
+  renderPage({ id: 'teacher-chu-nhiem', role: 'TEACHER' });
+
+  expect(screen.getByRole('table').parentElement).toHaveClass('overflow-auto');
+  expect(screen.getByRole('columnheader', { name: 'Học sinh' })).toHaveClass('h-10');
+
+  await userEvent.click(screen.getAllByRole('button', { name: 'Đổi trạng thái' })[0]);
+  await userEvent.click(screen.getByRole('button', { name: 'Xác nhận' }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent('Không đổi được trạng thái');
+  expect(alert).toHaveClass('bg-danger-soft');
+});
