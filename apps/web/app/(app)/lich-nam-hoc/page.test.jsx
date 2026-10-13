@@ -598,3 +598,19 @@ describe('ADMIN xóa ngày nghỉ', () => {
     expect((await within(dialog).findByRole('alert')).textContent).toBe('Bạn không có quyền thực hiện thao tác này');
   });
 });
+
+describe('dùng component shadcn/ui', () => {
+  test('thẻ thống kê là Card, bảng ngày nghỉ là Table (có wrapper cuộn ngang), lỗi thống kê là Alert destructive', () => {
+    const { unmount } = renderPage();
+
+    expect(statCard('Nghỉ lễ')).toHaveClass('bg-card', 'shadow-sm');
+    const table = screen.getByRole('table');
+    expect(table).toHaveClass('caption-bottom');
+    expect(table.parentElement).toHaveClass('overflow-auto');
+    unmount();
+
+    getCalendarStatsMock.mockReturnValue({ currentData: undefined, isError: true, error: { status: 500 } });
+    renderPage();
+    expect(screen.getByRole('alert')).toHaveClass('border-destructive/40');
+  });
+});

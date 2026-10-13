@@ -2,6 +2,7 @@ import { Check } from 'lucide-react';
 import { MAX_PERIODS_PER_DAY } from '@so-chu-nhiem/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import {
   formatDayMonth,
   getWeekDays,
@@ -189,10 +190,10 @@ export function TimetableGrid({
   );
 
   return (
-    <div
+    <Card
       role="region"
       aria-label={`Thời khóa biểu tuần ${formatDayMonth(days[0])} – ${formatDayMonth(days[days.length - 1])}`}
-      className="overflow-x-auto rounded-lg border border-border bg-white"
+      className="overflow-x-auto bg-white shadow-none"
     >
       <div className="md:min-w-[608px]">
         <div className="flex gap-1 border-b border-border p-2 md:hidden">
@@ -257,6 +258,6 @@ export function TimetableGrid({
           ))}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

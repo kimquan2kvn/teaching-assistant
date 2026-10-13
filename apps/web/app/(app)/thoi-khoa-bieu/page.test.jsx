@@ -545,3 +545,25 @@ describe('một ngày mỗi lần trên điện thoại (Review Focus 3)', () =>
     expect(hiddenColumnDates(container)).toHaveLength(5);
   });
 });
+
+describe('dùng component shadcn/ui', () => {
+  test('trạng thái "chưa giữ môn" là Card viền đứt; lỗi tải tuần là Alert destructive', () => {
+    getMyPositionsMock.mockReturnValue({ data: [], isLoading: false });
+    const { unmount } = renderPage();
+    expect(screen.getByText(NO_SUBJECT_TEXT).closest('.bg-card')).toHaveClass('border-dashed');
+    unmount();
+
+    getWeekMock.mockReturnValue({ data: undefined, isLoading: false, isError: true, error: { status: 500 } });
+    renderPage();
+    expect(screen.getByRole('alert')).toHaveClass('border-destructive/40');
+  });
+
+  test('cảnh báo lỗi ngày nghỉ là Alert destructive, không phải role=alert (giữ như bản cũ: không ngắt lời trình đọc)', () => {
+    getHolidaysMock.mockReturnValue({ data: undefined, isLoading: false, isError: true, error: { status: 500 } });
+    renderPage();
+
+    const warning = screen.getByText(HOLIDAY_WARNING);
+    expect(warning).toHaveClass('border-destructive/40');
+    expect(warning).not.toHaveAttribute('role', 'alert');
+  });
+});
