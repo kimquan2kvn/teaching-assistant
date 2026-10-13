@@ -48,4 +48,5 @@ test('sai mật khẩu hiện ĐÚNG message backend trả, không phải messag
   await userEvent.type(screen.getByPlaceholderText('Mật khẩu'), 'sai');
   await userEvent.click(screen.getByRole('button', { name: 'Đăng nhập' }));
   expect(await screen.findByText('Sai tên đăng nhập hoặc mật khẩu')).toBeInTheDocument();
+  expect(screen.getByRole('alert')).toHaveTextContent('Sai tên đăng nhập hoặc mật khẩu');
 });

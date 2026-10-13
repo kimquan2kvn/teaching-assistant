@@ -27,6 +27,7 @@ test('lỗi: hiện đúng error.data.message từ backend', () => {
   });
   render(<LopHocPage />);
   expect(screen.getByText('Không thể kết nối tới máy chủ')).toBeInTheDocument();
+  expect(screen.getByRole('alert')).toHaveTextContent('Không thể kết nối tới máy chủ');
 });
 
 test('lỗi không kèm message cụ thể: hiện fallback thay vì màn trắng', () => {

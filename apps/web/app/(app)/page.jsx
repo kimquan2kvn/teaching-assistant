@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useGetMyPositionsQuery } from '@/lib/store/positions-api';
 import { buttonVariants } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { ClassDashboardContent } from './lop-hoc/[classId]/bang-dieu-khien/page';
 
@@ -21,16 +23,20 @@ function dedupeClasses(positions) {
 // khiển của lớp (thay vì "Xem lớp"/"Xem học sinh") vì đây là lối vào để XEM DASHBOARD, không phải quản lý lớp.
 function ClassCard({ klass }) {
   return (
-    <li className="rounded-lg border border-border p-4">
-      <p className="font-heading text-lg font-semibold">{klass.name}</p>
-      <p className="mt-1 text-sm text-fg-muted">
-        Mã lớp: <span className="font-medium text-fg">{klass.code}</span>
-      </p>
-      <div className="mt-4 text-sm">
-        <Link href={`/lop-hoc/${klass.id}/bang-dieu-khien`} className="font-medium text-brand hover:underline">
-          Xem bảng điều khiển
-        </Link>
-      </div>
+    <li>
+      <Card>
+        <CardContent className="p-4">
+          <p className="font-heading text-lg font-semibold">{klass.name}</p>
+          <p className="mt-1 text-sm text-fg-muted">
+            Mã lớp: <span className="font-medium text-fg">{klass.code}</span>
+          </p>
+          <div className="mt-4 text-sm">
+            <Link href={`/lop-hoc/${klass.id}/bang-dieu-khien`} className="font-medium text-brand hover:underline">
+              Xem bảng điều khiển
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </li>
   );
 }
@@ -46,9 +52,11 @@ export default function DashboardPage() {
       {!isLoading && error && (
         <>
           <h1 className="font-heading text-2xl font-semibold">Tổng quan</h1>
-          <p className="mt-2 text-sm text-danger">
-            {error?.data?.message ?? 'Không tải được danh sách lớp, vui lòng thử lại'}
-          </p>
+          <Alert variant="destructive" className="mt-2">
+            <AlertDescription>
+              {error?.data?.message ?? 'Không tải được danh sách lớp, vui lòng thử lại'}
+            </AlertDescription>
+          </Alert>
         </>
       )}
 
@@ -57,7 +65,7 @@ export default function DashboardPage() {
       {!isLoading && !error && classes.length === 0 && (
         <>
           <h1 className="font-heading text-2xl font-semibold">Tổng quan</h1>
-          <div className="mt-6 rounded-lg border border-dashed border-border p-8 text-center">
+          <Card className="mt-6 border-dashed p-8 text-center">
             <p className="text-lg font-semibold">Bạn chưa giữ vị trí nào</p>
             <p className="mt-2 text-fg-muted">
               Tạo lớp mới hoặc tham gia bằng mã lớp để bắt đầu quản lý lớp học.
@@ -70,7 +78,7 @@ export default function DashboardPage() {
                 Tham gia bằng mã lớp
               </Link>
             </div>
-          </div>
+          </Card>
         </>
       )}
 

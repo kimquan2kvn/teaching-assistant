@@ -6,6 +6,8 @@ import { useCreateClassMutation } from '@/lib/store/classes-api';
 import { Input } from '@/components/ui/input';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function TaoLopPage() {
   const [name, setName] = useState('');
@@ -56,17 +58,20 @@ export default function TaoLopPage() {
         onChange={(e) => setName(e.target.value)}
       />
       <div className="flex items-center gap-2">
-        <input
+        <Checkbox
           id="claimHomeroom"
-          type="checkbox"
           checked={claimHomeroom}
-          onChange={(e) => setClaimHomeroom(e.target.checked)}
+          onCheckedChange={(checked) => setClaimHomeroom(checked === true)}
         />
         <Label htmlFor="claimHomeroom" className="mb-0">
           Bạn có phải GVCN lớp này không?
         </Label>
       </div>
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
       <Button type="submit" disabled={isLoading}>
         Tạo lớp
       </Button>
