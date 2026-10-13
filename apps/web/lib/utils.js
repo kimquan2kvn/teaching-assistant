@@ -59,8 +59,9 @@ export function formatSignedPoints(points) {
 }
 
 const FORBIDDEN_MESSAGE = 'Bạn không có quyền thực hiện thao tác này';
-// Cả hai endpoint import (học sinh, PPCT) đều giới hạn file 5MB ở backend (MAX_IMPORT_FILE_SIZE_BYTES).
-const FILE_TOO_LARGE_MESSAGE = 'File quá lớn (tối đa 5MB)';
+// 413 đến từ cả upload file (multer, giới hạn 5MB) lẫn body JSON (commit import) hoặc reverse proxy, nên câu dự phòng
+// phải trung tính, không nhắc riêng "file" hay con số 5MB.
+const PAYLOAD_TOO_LARGE_MESSAGE = 'Dữ liệu hoặc file gửi lên quá lớn';
 const UNREADABLE_UPLOAD_MESSAGE = 'Không đọc được file tải lên, vui lòng chọn lại file';
 
 function containsNonAscii(text) {
@@ -82,7 +83,7 @@ export function apiErrorMessage(err, fallback) {
     return hasVietnameseMessage ? message : FORBIDDEN_MESSAGE;
   }
   if (err?.status === 413 || err?.originalStatus === 413) {
-    return hasVietnameseMessage ? message : FILE_TOO_LARGE_MESSAGE;
+    return hasVietnameseMessage ? message : PAYLOAD_TOO_LARGE_MESSAGE;
   }
   if (hasMessage && message.startsWith('Multipart')) return UNREADABLE_UPLOAD_MESSAGE;
   return hasMessage ? message : fallback;

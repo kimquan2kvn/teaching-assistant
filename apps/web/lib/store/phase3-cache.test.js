@@ -3,6 +3,7 @@ import { schoolCalendarApi } from './school-calendar-api';
 import { ppctApi } from './ppct-api';
 import { timetableApi } from './timetable-api';
 import { lessonLogsApi } from './lesson-logs-api';
+import { positionsApi } from './positions-api';
 import { makeHoliday, makeLessonLog, makePpctItem, makeSlot, makeWeekLog } from '../test-fixtures/phase3';
 
 // Review Focus 5: ghi ngày nghỉ / tiết / PPCT / sổ báo giảng làm backend tính lại và dịch nhiều buổi báo giảng, nên các
@@ -10,6 +11,10 @@ import { makeHoliday, makeLessonLog, makePpctItem, makeSlot, makeWeekLog } from 
 // thừa (thừa = gọi lại vô ích query của vị trí khác). Mỗi ca so TẬP GET phát sinh sau lần ghi với tập kỳ vọng bằng
 // toEqual trên mảng đã sắp: 1 phép so vừa chứng minh "có refetch", vừa chứng minh "KHÔNG refetch" các query còn lại,
 // vừa bắt refetch đúp (mỗi query phải đúng 1 lần).
+//
+// Tham gia / ngừng phụ trách / gán lại vị trí (positions-api) chỉ đổi holderId, không tính lại dữ liệu nào, nhưng 2 lưới
+// tuần của giáo viên (/timetable/me, /lesson-logs/week) gom theo TẬP vị trí đang giữ nên phải làm mới; dữ liệu theo từng
+// vị trí (sổ báo giảng, tiết, PPCT) giữ nguyên nội dung nên không refetch.
 //
 // Mọi lệnh ghi đều .unwrap(): RTK Query 2.x vẫn áp invalidatesTags cả khi mutation bị từ chối (404/409/5xx), nên route
 // quên mock vẫn kéo theo refetch và cho test xanh giả. Cũng vì thế file này không khẳng định "ghi lỗi thì không refetch".
@@ -61,6 +66,12 @@ const AFTER_HOLIDAY_WRITE = [GET.holidaysY1, GET.statsY1, GET.logsP1, GET.logsP2
 const AFTER_SLOT_WRITE_P1 = [GET.slotsP1, GET.logsP1, GET.weekLogs, GET.weekGrid];
 const AFTER_PPCT_WRITE_P1 = [GET.ppctP1, GET.logsP1, GET.weekLogs, GET.weekGrid];
 const AFTER_LOG_UPDATE_P1 = [GET.logsP1, GET.weekLogs, GET.weekGrid];
+// Đổi người giữ vị trí: chỉ 2 lưới tuần làm mới, mọi query theo vị trí giữ nguyên.
+const AFTER_HOLDER_CHANGE = [GET.weekLogs, GET.weekGrid];
+
+function makeHeldPosition(overrides = {}) {
+  return { _id: 'p-toan', classId: 'class-1', type: 'SUBJECT', subject: 'Toán', holderId: 'u1', ...overrides };
+}
 
 const WRITES = [
   {
@@ -139,6 +150,27 @@ const WRITES = [
     arg: { positionId: 'p1', logId: 'l1', done: true },
     write: { 'PATCH /positions/p1/lesson-logs/l1': [200, makeLessonLog({ done: true })] },
     refetched: AFTER_LOG_UPDATE_P1,
+  },
+  {
+    name: 'joinPosition',
+    endpoint: positionsApi.endpoints.joinPosition,
+    arg: { code: '11A4-8X2K', type: 'SUBJECT', subject: 'Toán' },
+    write: { 'POST /positions/join': [201, makeHeldPosition()] },
+    refetched: AFTER_HOLDER_CHANGE,
+  },
+  {
+    name: 'releasePosition',
+    endpoint: positionsApi.endpoints.releasePosition,
+    arg: 'p-toan',
+    write: { 'POST /positions/p-toan/release': [201, makeHeldPosition({ holderId: null })] },
+    refetched: AFTER_HOLDER_CHANGE,
+  },
+  {
+    name: 'reassignPosition',
+    endpoint: positionsApi.endpoints.reassignPosition,
+    arg: { positionId: 'p-toan', teacherId: 'u2', classId: 'class-1', oldTeacherId: 'u1' },
+    write: { 'PATCH /positions/p-toan/reassign': [200, makeHeldPosition({ holderId: 'u2' })] },
+    refetched: AFTER_HOLDER_CHANGE,
   },
 ];
 
@@ -243,3 +275,86 @@ test('importPpctPreview chỉ đọc file nên không refetch query nào; ghi th
   await settle();
   expect(sentGets()).toEqual([...AFTER_PPCT_WRITE_P1].sort());
 });
+
+// Lưới tuần của giáo viên chỉ có tiết của các vị trí ĐANG giữ: tham gia 1 môn đã có TKB kế thừa thì có thêm tiết, ngừng
+// phụ trách thì mất tiết. Mô phỏng bằng 1 biến "đang giữ" mà lần ghi vị trí đổi.
+function mockTeacherWeekBackend({ writeKey, isHoldingAfterWrite }) {
+  let isHolding = !isHoldingAfterWrite;
+  global.fetch = jest.fn((request) => {
+    const key = keyOf(request);
+    if (key === writeKey) {
+      isHolding = isHoldingAfterWrite;
+      return jsonResponse(201, makeHeldPosition());
+    }
+    if (key === GET.weekGrid) {
+      return jsonResponse(200, isHolding ? makeWeekGrid() : { ...makeWeekGrid(), slots: [], lessonLogs: [] });
+    }
+    if (key === GET.weekLogs) return jsonResponse(200, isHolding ? [makeWeekLog()] : []);
+    return jsonResponse(404, { message: `Test chưa mock ${key}` });
+  });
+}
+
+// Giống 2 trang /thoi-khoa-bieu và /so-bao-giang: mount = đăng ký 2 query lưới tuần, unmount = hủy đăng ký (bản cache
+// vẫn sống 60 giây).
+function mountWeekPages(store) {
+  const grid = store.dispatch(timetableApi.endpoints.getMyTimetableWeek.initiate({ weekStart: WEEK }));
+  const logs = store.dispatch(lessonLogsApi.endpoints.getTeacherWeekLessonLogs.initiate({ weekStart: WEEK }));
+  return {
+    async read() {
+      const [gridResult, logsResult] = await Promise.all([grid, logs]);
+      return { slots: gridResult.data?.slots.length, lessonLogs: logsResult.data?.length };
+    },
+    unmount() {
+      grid.unsubscribe();
+      logs.unsubscribe();
+    },
+  };
+}
+
+const HOLDER_WRITES_FROM_TEACHER = [
+  {
+    name: 'joinPosition',
+    endpoint: positionsApi.endpoints.joinPosition,
+    arg: { code: '11A4-8X2K', type: 'SUBJECT', subject: 'Toán' },
+    writeKey: 'POST /positions/join',
+    isHoldingAfterWrite: true,
+  },
+  {
+    name: 'releasePosition',
+    endpoint: positionsApi.endpoints.releasePosition,
+    arg: 'p-toan',
+    writeKey: 'POST /positions/p-toan/release',
+    isHoldingAfterWrite: false,
+  },
+];
+
+test.each(HOLDER_WRITES_FROM_TEACHER)(
+  '$name khi 2 lưới tuần đã unmount (không còn subscriber): mount lại trong hạn cache vẫn lấy dữ liệu mới',
+  async ({ endpoint, arg, writeKey, isHoldingAfterWrite }) => {
+    mockTeacherWeekBackend({ writeKey, isHoldingAfterWrite });
+    const store = makeStore();
+    const withSlots = { slots: 1, lessonLogs: 1 };
+    const withoutSlots = { slots: 0, lessonLogs: 0 };
+    const [before, after] = isHoldingAfterWrite ? [withoutSlots, withSlots] : [withSlots, withoutSlots];
+
+    const firstVisit = mountWeekPages(store);
+    expect(await firstVisit.read()).toEqual(before);
+    firstVisit.unmount();
+    global.fetch.mockClear();
+
+    // Đối chứng: chưa ghi gì thì mount lại dùng bản cache cũ, không gọi mạng — nên việc lấy mới sau lần ghi là do
+    // invalidate chứ không phải do query luôn refetch khi mount.
+    const controlVisit = mountWeekPages(store);
+    expect(await controlVisit.read()).toEqual(before);
+    expect(sentGets()).toEqual([]);
+    controlVisit.unmount();
+
+    await store.dispatch(endpoint.initiate(arg)).unwrap();
+    await settle();
+    global.fetch.mockClear();
+
+    const secondVisit = mountWeekPages(store);
+    expect(await secondVisit.read()).toEqual(after);
+    expect(sentGets()).toEqual([GET.weekLogs, GET.weekGrid].sort());
+  },
+);

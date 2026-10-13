@@ -162,3 +162,75 @@ test('confirm thất bại (400) giữ nguyên bảng preview trên màn hình, 
   expect(screen.getByText('Nguyễn Văn A')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Xác nhận nhập' })).toBeInTheDocument();
 });
+
+test('preview lỗi 413 "File too large" (tiếng Anh của multer) → hiện câu tiếng Việt, không lộ tiếng Anh', async () => {
+  importPreviewMock.mockReturnValue({
+    unwrap: () => Promise.reject({ status: 413, data: { message: 'File too large' } }),
+  });
+  renderPage();
+
+  await userEvent.upload(screen.getByLabelText('Chọn file Excel'), makeFile());
+  await userEvent.click(screen.getByRole('button', { name: 'Xem trước' }));
+
+  expect(await screen.findByText('Dữ liệu hoặc file gửi lên quá lớn')).toBeInTheDocument();
+  expect(screen.queryByText('File too large')).not.toBeInTheDocument();
+});
+
+test('preview lỗi 400 tiếng Việt của backend → vẫn hiện nguyên văn', async () => {
+  importPreviewMock.mockReturnValue({
+    unwrap: () => Promise.reject({ status: 400, data: { message: 'File Excel không có dữ liệu' } }),
+  });
+  renderPage();
+
+  await userEvent.upload(screen.getByLabelText('Chọn file Excel'), makeFile());
+  await userEvent.click(screen.getByRole('button', { name: 'Xem trước' }));
+
+  expect(await screen.findByText('File Excel không có dữ liệu')).toBeInTheDocument();
+});
+
+test('preview lỗi mạng (không có data) → hiện câu dự phòng "Đọc file thất bại, vui lòng thử lại"', async () => {
+  importPreviewMock.mockReturnValue({ unwrap: () => Promise.reject({ status: 'FETCH_ERROR' }) });
+  renderPage();
+
+  await userEvent.upload(screen.getByLabelText('Chọn file Excel'), makeFile());
+  await userEvent.click(screen.getByRole('button', { name: 'Xem trước' }));
+
+  expect(await screen.findByText('Đọc file thất bại, vui lòng thử lại')).toBeInTheDocument();
+});
+
+test('confirm lỗi 413 "File too large" → hiện câu tiếng Việt và giữ bảng preview', async () => {
+  importPreviewMock.mockReturnValue({
+    unwrap: () =>
+      Promise.resolve({
+        rows: [{ rowNumber: 2, fullName: 'Nguyễn Văn A', dob: '2015-05-20T00:00:00.000Z', errors: [] }],
+      }),
+  });
+  importConfirmMock.mockReturnValue({
+    unwrap: () => Promise.reject({ status: 413, data: { message: 'File too large' } }),
+  });
+  renderPage();
+
+  await userEvent.upload(screen.getByLabelText('Chọn file Excel'), makeFile());
+  await userEvent.click(screen.getByRole('button', { name: 'Xem trước' }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận nhập' }));
+
+  expect(await screen.findByText('Dữ liệu hoặc file gửi lên quá lớn')).toBeInTheDocument();
+  expect(screen.getByText('Nguyễn Văn A')).toBeInTheDocument();
+});
+
+test('confirm lỗi mạng (không có data) → hiện câu dự phòng "Xác nhận nhập thất bại, vui lòng thử lại"', async () => {
+  importPreviewMock.mockReturnValue({
+    unwrap: () =>
+      Promise.resolve({
+        rows: [{ rowNumber: 2, fullName: 'Nguyễn Văn A', dob: '2015-05-20T00:00:00.000Z', errors: [] }],
+      }),
+  });
+  importConfirmMock.mockReturnValue({ unwrap: () => Promise.reject({ status: 'FETCH_ERROR' }) });
+  renderPage();
+
+  await userEvent.upload(screen.getByLabelText('Chọn file Excel'), makeFile());
+  await userEvent.click(screen.getByRole('button', { name: 'Xem trước' }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận nhập' }));
+
+  expect(await screen.findByText('Xác nhận nhập thất bại, vui lòng thử lại')).toBeInTheDocument();
+});
