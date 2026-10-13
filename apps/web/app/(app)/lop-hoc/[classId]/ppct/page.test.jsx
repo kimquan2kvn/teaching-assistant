@@ -80,6 +80,19 @@ function findRow(text) {
   return row;
 }
 
+// Khối Yêu cầu cần đạt/Ghi chú dành cho điện thoại: phần tử mang class md:hidden trong ô "Bài học" (cột thứ hai) của
+// dòng. jsdom không nạp CSS nên "chỉ hiện dưới md" được kiểm bằng class, như các ca (e) bên dưới.
+function queryMobileDetails(rowText) {
+  const titleCell = within(findRow(rowText)).getAllByRole('cell')[1];
+  return titleCell.querySelector('.md\\:hidden');
+}
+
+function getMobileDetails(rowText) {
+  const block = queryMobileDetails(rowText);
+  if (!block) throw new Error(`Ô "Bài học" của dòng "${rowText}" không có khối md:hidden`);
+  return block;
+}
+
 function lastRequestedPositionId() {
   return getPositionPpctMock.mock.calls.at(-1)[0];
 }
@@ -242,7 +255,8 @@ describe('bảng PPCT', () => {
       .getAllByRole('cell')
       .map((cell) => cell.textContent);
     expect(cellTexts[0]).toBe('1');
-    expect(cellTexts[1]).toBe('Bài tự chọn 1');
+    // Ô "Bài học" còn chứa khối Yêu cầu/Ghi chú dành cho điện thoại ngay sau tên bài.
+    expect(cellTexts[1]).toMatch(/^Bài tự chọn 1/);
     expect(cellTexts[2]).toBe('2');
     expect(cellTexts[5]).toBe('Dạy bù tuần sau');
   });
@@ -314,6 +328,66 @@ describe('bảng PPCT', () => {
 
     expect(screen.getByText('Bạn không có quyền thực hiện thao tác này')).toBeInTheDocument();
     expect(screen.queryByText('Forbidden resource')).toBeNull();
+  });
+});
+
+// Dưới md hai cột dài bị ẩn bằng display:none (cuộn ngang cũng không thấy). GVCN chỉ xem, không có nút Sửa nên hộp
+// thoại cũng không mở được: nếu nội dung không có chỗ nào khác để đọc thì mất 2 trong 6 cột bắt buộc của PPCT.
+describe('Yêu cầu cần đạt và Ghi chú trên điện thoại (dưới md)', () => {
+  test('(I3) GVCN chỉ xem: Yêu cầu cần đạt hiện ngay trong ô "Bài học", trong khối md:hidden, có nhãn rõ ràng', () => {
+    renderPage({ user: GVCN });
+
+    const block = getMobileDetails('Bài 1');
+
+    expect(within(block).getByText('Yêu cầu cần đạt:')).toBeInTheDocument();
+    expect(block).toHaveTextContent('Nắm được khái niệm');
+    // Xuống dòng trong nội dung được giữ như ở 2 cột riêng từ md.
+    expect(block).toHaveClass('whitespace-pre-line');
+  });
+
+  test('(I3) GVCN chỉ xem: Ghi chú hiện ngay trong ô "Bài học" kèm nhãn "Ghi chú:"', () => {
+    renderPage({ user: GVCN });
+
+    const block = getMobileDetails('Bài tự chọn 1');
+
+    expect(within(block).getByText('Ghi chú:')).toBeInTheDocument();
+    expect(block).toHaveTextContent('Dạy bù tuần sau');
+  });
+
+  test('(I3) dòng chỉ có một trong hai trường thì không hiện nhãn rỗng của trường còn lại', () => {
+    renderPage({ user: GVCN });
+
+    // Bài 1 có yêu cầu, không có ghi chú; Bài tự chọn 1 có ghi chú, yêu cầu để trống.
+    expect(within(getMobileDetails('Bài 1')).queryByText('Ghi chú:')).toBeNull();
+    expect(within(getMobileDetails('Bài tự chọn 1')).queryByText('Yêu cầu cần đạt:')).toBeNull();
+  });
+
+  test('(I3) dòng không có cả hai thì ô "Bài học" chỉ có tên bài, không có khối hay nhãn nào', () => {
+    getPositionPpctMock.mockReturnValue({
+      currentData: [makePpctItem({ _id: 'i9', title: 'Bài trống' })],
+      isError: false,
+    });
+    renderPage({ user: GVCN });
+
+    expect(queryMobileDetails('Bài trống')).toBeNull();
+    expect(screen.queryByText('Yêu cầu cần đạt:')).toBeNull();
+    expect(screen.queryByText('Ghi chú:')).toBeNull();
+  });
+
+  test('(I3) không phụ thuộc quyền: người sửa được (GVBM) cũng đọc được ngay trong bảng, không cần mở hộp thoại Sửa', () => {
+    renderPage({ user: GVBM_TOAN });
+
+    expect(within(getMobileDetails('Bài 1')).getByText('Yêu cầu cần đạt:')).toBeInTheDocument();
+    expect(within(getMobileDetails('Bài tự chọn 1')).getByText('Ghi chú:')).toBeInTheDocument();
+  });
+
+  test('(I3) từ md trở lên vẫn dùng 2 cột riêng (hidden md:table-cell) với đầy đủ nội dung; khối trong ô "Bài học" chỉ là bản cho điện thoại', () => {
+    renderPage({ user: GVCN });
+
+    const cells = within(findRow('Bài 1')).getAllByRole('cell');
+    expect(cells[4]).toHaveTextContent('Nắm được khái niệm');
+    expect(cells[4]).toHaveClass('hidden', 'md:table-cell');
+    expect(cells[5]).toHaveClass('hidden', 'md:table-cell');
   });
 });
 

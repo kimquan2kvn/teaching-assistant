@@ -16,7 +16,8 @@ import { Select } from '@/components/ui/select';
 import { getPeriodKind } from '@/lib/ppct';
 import { apiErrorMessage, canEditPosition, cn, getReadableSubjectPositions } from '@/lib/utils';
 
-// Yêu cầu cần đạt và Ghi chú dài nên ẩn dưới md (điện thoại); người sửa được vẫn xem/sửa đủ qua hộp thoại.
+// Yêu cầu cần đạt và Ghi chú dài nên chỉ thành cột riêng từ md; dưới md (điện thoại) nội dung của chúng nằm ngay dưới
+// tên bài trong ô "Bài học" (xem MobileDetails).
 const LONG_COLUMN = 'hidden md:table-cell';
 
 const DELETE_WARNING = 'Xóa mục PPCT sẽ xóa luôn buổi báo giảng tương ứng (kể cả buổi đã tích "Đã thực hiện").';
@@ -34,6 +35,26 @@ function PeriodLabel({ label }) {
       {kind && <Badge>{kind}</Badge>}
       <span className="font-mono">{label}</span>
     </span>
+  );
+}
+
+// Cột ẩn bằng display:none thì cuộn ngang cũng không thấy. Người chỉ xem (GVCN) không có nút Sửa nên không mở được hộp
+// thoại, nếu không hiện ở đây thì trên điện thoại họ không đọc được 2 trong 6 cột bắt buộc của PPCT.
+function MobileDetails({ requirement, note }) {
+  if (!requirement && !note) return null;
+  return (
+    <div className="mt-1 flex flex-col gap-1 whitespace-pre-line text-xs text-fg-muted md:hidden">
+      {requirement && (
+        <p>
+          <span className="font-medium text-fg">Yêu cầu cần đạt:</span> {requirement}
+        </p>
+      )}
+      {note && (
+        <p>
+          <span className="font-medium text-fg">Ghi chú:</span> {note}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -56,7 +77,10 @@ function PpctTable({ items, canEdit, onEdit, onDelete }) {
           {items.map((item) => (
             <tr key={item._id} className="border-t border-border align-top">
               <td className="py-2 pr-4 font-mono">{item.week}</td>
-              <td className="py-2 pr-4">{item.title}</td>
+              <td className="py-2 pr-4">
+                {item.title}
+                <MobileDetails requirement={item.requirement} note={item.note} />
+              </td>
               <td className="py-2 pr-4 font-mono">{item.periodCount}</td>
               <td className="py-2 pr-4">
                 <PeriodLabel label={item.periodLabel} />
