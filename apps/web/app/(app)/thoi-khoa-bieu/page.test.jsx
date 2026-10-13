@@ -82,6 +82,16 @@ function fakeNow(isoInstant) {
   });
 }
 
+// Hình dạng thật của hook RTK Query khi đã có kết quả cho ĐÚNG tuần đang xem: data trùng currentData.
+function loadedWeek(data) {
+  return { data, currentData: data, isLoading: false, isFetching: false, isError: false };
+}
+
+// Vừa đổi tuần: hook còn giữ `data` của tuần trước nhưng chưa có `currentData` của tuần mới.
+function switchingWeek(staleData) {
+  return { data: staleData, currentData: undefined, isLoading: false, isFetching: true, isError: false };
+}
+
 function renderPage(user = TEACHER) {
   const store = configureStore({
     reducer: { auth: authReducer },
@@ -111,7 +121,7 @@ beforeEach(() => {
   getHolidaysMock.mockReset();
   getMyPositionsMock.mockReset();
   slotPanelMock.mockReset();
-  getWeekMock.mockReturnValue({ data: WEEK_DATA, isLoading: false, isFetching: false, isError: false });
+  getWeekMock.mockReturnValue(loadedWeek(WEEK_DATA));
   getSchoolYearsMock.mockReturnValue({ data: [makeSchoolYear()], isLoading: false, isError: false });
   getHolidaysMock.mockReturnValue({ data: [], isLoading: false, isError: false });
   getMyPositionsMock.mockReturnValue({ data: MY_POSITIONS, isLoading: false, isError: false });
@@ -242,12 +252,31 @@ describe('lưới tuần', () => {
     expect(screen.getByRole('button', { name: 'Tuần sau' })).toBeInTheDocument();
   });
 
-  test('đang tải tuần mới (còn dữ liệu cũ): lưới vẫn hiện nhưng đánh dấu aria-busy', () => {
-    getWeekMock.mockReturnValue({ data: WEEK_DATA, isLoading: false, isFetching: true, isError: false });
-    renderPage();
+  test('đang tải tuần mới (hook còn `data` tuần cũ): khung lưới vẫn hiện, aria-busy, KHÔNG có tiết của tuần cũ', () => {
+    getWeekMock.mockReturnValue(switchingWeek(WEEK_DATA));
+    const { container } = renderPage();
 
     const region = screen.getByRole('region', { name: 'Thời khóa biểu tuần 12/01 – 17/01' });
     expect(region.closest('[aria-busy]')).toHaveAttribute('aria-busy', 'true');
+    expect(container.querySelectorAll('[data-column]')).toHaveLength(6);
+    expect(within(region).queryByText('Toán')).not.toBeInTheDocument();
+    expect(within(region).queryByText('Bài 1')).not.toBeInTheDocument();
+  });
+
+  test('nhảy sang tháng xa: tiết (hiệu lực không giới hạn) của tuần cũ không được đặt lên ngày của tuần mới trong lúc tải, và không nháy câu "tuần này chưa có tiết nào"', async () => {
+    getWeekMock.mockImplementation(({ weekStart }) =>
+      weekStart === '2026-01-12' ? loadedWeek(WEEK_DATA) : switchingWeek(WEEK_DATA),
+    );
+    const { container } = renderPage();
+    expect(within(cellOf(container, '2026-01-12', 1)).getByText('Toán')).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText('Tháng'), '3');
+
+    expect(getWeekMock).toHaveBeenLastCalledWith({ weekStart: '2026-03-02' });
+    expect(cellOf(container, '2026-03-02', 1)).toBeEmptyDOMElement();
+    expect(screen.queryByText('Toán')).not.toBeInTheDocument();
+    expect(screen.queryByText(EMPTY_WEEK_TEXT)).not.toBeInTheDocument();
+    expect(screen.getByRole('region').closest('[aria-busy]')).toHaveAttribute('aria-busy', 'true');
   });
 
   test('tải xong: aria-busy tắt', () => {
@@ -316,6 +345,25 @@ describe('lỗi tải', () => {
     expect(screen.getByText(HOLIDAY_WARNING)).toBeInTheDocument();
   });
 
+  test.each([
+    ['message của backend hiện nguyên văn', { status: 500, data: { message: 'Đã có lỗi xảy ra, vui lòng thử lại sau' } }, 'Đã có lỗi xảy ra, vui lòng thử lại sau'],
+    ['lỗi mạng hiện câu dự phòng', { status: 'FETCH_ERROR', error: 'TypeError: Failed to fetch' }, 'Không tải được danh sách môn, vui lòng thử lại'],
+  ])('tải danh sách vị trí lỗi (%s): có role=alert, không nói nhầm "chưa giữ môn nào", lưới tuần vẫn dựng', (_label, error, expectedText) => {
+    getMyPositionsMock.mockReturnValue({ data: undefined, isLoading: false, isError: true, error });
+    const { container } = renderPage();
+
+    expect(screen.getByRole('alert')).toHaveTextContent(expectedText);
+    expect(screen.queryByText(NO_SUBJECT_TEXT)).not.toBeInTheDocument();
+    expect(screen.queryByText('Khai báo tiết')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('[data-column]')).toHaveLength(6);
+  });
+
+  test('danh sách vị trí tải được thì không có alert nào', () => {
+    renderPage();
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   test('không có lỗi ngày nghỉ thì không hiện cảnh báo', () => {
     renderPage();
 
@@ -349,12 +397,7 @@ describe('ngày nghỉ theo năm học hiện hành', () => {
 describe('trạng thái rỗng (Review Focus 3)', () => {
   test('chưa giữ môn SUBJECT nào (chỉ có vị trí chủ nhiệm): câu giải thích + link tham gia lớp; không có phần Khai báo tiết', () => {
     getMyPositionsMock.mockReturnValue({ data: [MY_POSITIONS[0]], isLoading: false });
-    getWeekMock.mockReturnValue({
-      data: { ...WEEK_DATA, slots: [], lessonLogs: [] },
-      isLoading: false,
-      isFetching: false,
-      isError: false,
-    });
+    getWeekMock.mockReturnValue(loadedWeek({ ...WEEK_DATA, slots: [], lessonLogs: [] }));
     renderPage();
 
     expect(screen.getByText(NO_SUBJECT_TEXT)).toBeInTheDocument();
@@ -384,12 +427,7 @@ describe('trạng thái rỗng (Review Focus 3)', () => {
   });
 
   test('có môn nhưng tuần không có tiết: câu hướng dẫn xuống phần Khai báo tiết; lưới vẫn dựng', () => {
-    getWeekMock.mockReturnValue({
-      data: { ...WEEK_DATA, slots: [], lessonLogs: [] },
-      isLoading: false,
-      isFetching: false,
-      isError: false,
-    });
+    getWeekMock.mockReturnValue(loadedWeek({ ...WEEK_DATA, slots: [], lessonLogs: [] }));
     const { container } = renderPage();
 
     expect(screen.getByText(EMPTY_WEEK_TEXT)).toBeInTheDocument();
@@ -405,8 +443,8 @@ describe('trạng thái rỗng (Review Focus 3)', () => {
   });
 
   test('slot có trong dữ liệu tuần nhưng không còn hiệu lực ở ngày nào của tuần: vẫn coi là tuần chưa có tiết', () => {
-    getWeekMock.mockReturnValue({
-      data: {
+    getWeekMock.mockReturnValue(
+      loadedWeek({
         ...WEEK_DATA,
         slots: [
           makeSlot({
@@ -416,10 +454,8 @@ describe('trạng thái rỗng (Review Focus 3)', () => {
           }),
         ],
         lessonLogs: [],
-      },
-      isLoading: false,
-      isError: false,
-    });
+      }),
+    );
     renderPage();
 
     expect(screen.getByText(EMPTY_WEEK_TEXT)).toBeInTheDocument();

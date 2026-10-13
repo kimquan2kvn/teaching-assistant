@@ -39,6 +39,11 @@ function renderPage({ user = GVBM_TOAN, classId = 'class-1', searchParams = {} }
   );
 }
 
+// Hình dạng thật của hook RTK Query khi đã có kết quả cho đúng positionId: data trùng currentData.
+function loadedSlots(data) {
+  return { data, currentData: data, isLoading: false, isFetching: false, isError: false };
+}
+
 const queriedPositionIds = () => getSlotsMock.mock.calls.map(([positionId]) => positionId);
 
 function optionTexts(select) {
@@ -51,11 +56,7 @@ beforeEach(() => {
   getClassDetailMock.mockReset();
   getSlotsMock.mockReset();
   getClassDetailMock.mockReturnValue({ data: CLASS_DETAIL, isLoading: false, isError: false });
-  getSlotsMock.mockImplementation(() => ({
-    data: [makeSlot({ _id: 's1', dayOfWeek: 2, period: 1 })],
-    isLoading: false,
-    isError: false,
-  }));
+  getSlotsMock.mockImplementation(() => loadedSlots([makeSlot({ _id: 's1', dayOfWeek: 2, period: 1 })]));
 });
 
 describe('GVBM giữ môn', () => {
@@ -240,7 +241,7 @@ describe('trạng thái tải, lỗi và rỗng', () => {
   });
 
   test('môn chưa có tiết nào: hiện câu của bảng tiết kèm Thêm tiết cho người giữ môn', () => {
-    getSlotsMock.mockReturnValue({ data: [], isLoading: false, isError: false });
+    getSlotsMock.mockReturnValue(loadedSlots([]));
     renderPage({ user: GVBM_TOAN });
 
     expect(screen.getByText('Môn này chưa khai báo tiết nào')).toBeInTheDocument();

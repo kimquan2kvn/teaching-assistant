@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { makeStore } from '@/lib/store/store';
@@ -29,8 +29,9 @@ const JUMBLED_SLOTS = Object.freeze([
   makeSlot({ _id: 's1', dayOfWeek: 2, period: 1 }),
 ]);
 
+// Hình dạng thật của hook RTK Query khi đã có kết quả cho ĐÚNG positionId đang truyền: data trùng currentData.
 function mockSlots(data) {
-  getSlotsMock.mockReturnValue({ data, isLoading: false, isError: false });
+  getSlotsMock.mockReturnValue({ data, currentData: data, isLoading: false, isFetching: false, isError: false });
 }
 
 function renderPanel(props) {
@@ -148,6 +149,56 @@ describe('tải dữ liệu', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Đang tải...');
     expect(screen.queryByText('Môn này chưa khai báo tiết nào')).not.toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  // RTK Query giữ `data` của môn trước trong lúc tải môn mới, chỉ `currentData` là của đúng positionId đang truyền.
+  // Hiện `data` nghĩa là bảng tiết môn cũ kèm Sửa/Xóa nằm dưới môn mới (Xóa sẽ gửi slotId của môn cũ tới positionId mới).
+  test('đổi môn lúc tiết môn mới chưa về (hook còn giữ `data` môn cũ, chưa có `currentData`): chỉ "Đang tải...", không bảng và không nút nào', () => {
+    getSlotsMock.mockReturnValue({
+      data: JUMBLED_SLOTS,
+      currentData: undefined,
+      isLoading: false,
+      isFetching: true,
+      isError: false,
+    });
+    renderPanel({ canEdit: true, positionId: 'p-van' });
+
+    expect(screen.getByRole('status')).toHaveTextContent('Đang tải...');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sửa' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Xóa' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Thêm tiết' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Môn này chưa khai báo tiết nào')).not.toBeInTheDocument();
+  });
+
+  test('đang tải lại CÙNG môn (sau khi ghi, vẫn còn `currentData`): bảng vẫn hiện, không nháy "Đang tải..."', () => {
+    getSlotsMock.mockReturnValue({
+      data: JUMBLED_SLOTS,
+      currentData: JUMBLED_SLOTS,
+      isLoading: false,
+      isFetching: true,
+      isError: false,
+    });
+    renderPanel({ canEdit: true });
+
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.queryByText('Đang tải...')).not.toBeInTheDocument();
+  });
+
+  test('môn mới tải lỗi trong khi hook còn giữ `data` môn cũ: hiện lỗi, không hiện lại bảng cũ', () => {
+    getSlotsMock.mockReturnValue({
+      data: JUMBLED_SLOTS,
+      currentData: undefined,
+      isLoading: false,
+      isFetching: false,
+      isError: true,
+      error: { status: 500, data: { message: 'Đã có lỗi xảy ra, vui lòng thử lại sau' } },
+    });
+    renderPanel({ canEdit: true });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Đã có lỗi xảy ra, vui lòng thử lại sau');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Xóa' })).not.toBeInTheDocument();
   });
 
   test('lỗi 403 của guard (tiếng Anh) hiện câu tiếng Việt cố định; lỗi khác hiện nguyên văn message của backend', () => {
@@ -332,5 +383,69 @@ describe('thêm và sửa tiết (hộp thoại nhúng trong panel)', () => {
       effectiveTo: '2026-03-01',
     });
     expect(createSlotMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('hộp xác nhận xóa không đóng được khi đang xóa', () => {
+  async function clickOverlay() {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await userEvent.click(screen.getByRole('dialog').previousElementSibling);
+  }
+
+  test('đang xóa: Esc và bấm ra ngoài không đóng, nút Huỷ bị khóa', async () => {
+    useDeleteImpl = () => [deleteSlotMock, { isLoading: true }];
+    mockSlots(JUMBLED_SLOTS);
+    renderPanel({ canEdit: true });
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Xóa' })[0]);
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.keyboard('{Escape}');
+    await clickOverlay();
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Huỷ' })).toBeDisabled();
+  });
+
+  test('đang rảnh: Esc đóng được (đối chứng)', async () => {
+    mockSlots(JUMBLED_SLOTS);
+    renderPanel({ canEdit: true });
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Xóa' })[0]);
+    await screen.findByRole('dialog');
+    await userEvent.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  test('hook và store thật: Esc lúc DELETE còn treo không đóng, lỗi 404 trả về sau đó vẫn hiện trong hộp thoại', async () => {
+    useDeleteImpl = actualTimetableApi.useDeleteTimetableSlotMutation;
+    let respondLater;
+    global.fetch = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          respondLater = () => {
+            const text = JSON.stringify({ statusCode: 404, message: 'Không tìm thấy tiết trong thời khóa biểu' });
+            resolve({ status: 404, text: () => Promise.resolve(text), clone: () => ({ text: () => Promise.resolve(text) }) });
+          };
+        }),
+    );
+    mockSlots(JUMBLED_SLOTS);
+    render(
+      <Provider store={makeStore()}>
+        <SlotPanel positionId="p-toan" canEdit />
+      </Provider>,
+    );
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Xóa' })[0]);
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận' }));
+    expect(await within(dialog).findByRole('button', { name: 'Đang xóa...' })).toBeDisabled();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await act(async () => {
+      respondLater();
+    });
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Không tìm thấy tiết trong thời khóa biểu');
   });
 });

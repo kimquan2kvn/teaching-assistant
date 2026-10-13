@@ -22,6 +22,12 @@ function DeleteSlotDialog({ positionId, slot, onOpenChange }) {
   const [error, setError] = useState(null);
   const [deleteSlot, { isLoading }] = useDeleteTimetableSlotMutation();
 
+  // Đang xóa thì không cho đóng (Esc, Huỷ, bấm ra ngoài): lỗi trả về sau đó cần còn chỗ để hiện.
+  function handleOpenChange(nextOpen) {
+    if (!nextOpen && isLoading) return;
+    onOpenChange(nextOpen);
+  }
+
   async function handleConfirm() {
     if (isLoading) return;
     setError(null);
@@ -34,7 +40,7 @@ function DeleteSlotDialog({ positionId, slot, onOpenChange }) {
   }
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
+    <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)]">
         <DialogTitle>Xóa tiết?</DialogTitle>
         <p className="mt-2 text-sm">
@@ -50,7 +56,7 @@ function DeleteSlotDialog({ positionId, slot, onOpenChange }) {
         )}
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" disabled={isLoading}>
               Huỷ
             </Button>
           </DialogClose>
@@ -68,22 +74,24 @@ export function SlotPanel({ positionId, canEdit }) {
   // null khi đóng; { slot } khi mở — slot là undefined lúc thêm mới.
   const [formState, setFormState] = useState(null);
   const [slotToDelete, setSlotToDelete] = useState(null);
-  const { data, isLoading, isError, error } = useGetPositionTimetableSlotsQuery(positionId, { skip: !positionId });
+  // currentData, KHÔNG phải data: lúc đổi môn data còn là tiết của môn trước, bảng sẽ hiện tiết môn cũ kèm Sửa/Xóa
+  // gửi slotId môn cũ tới positionId môn mới. currentData giữ nguyên khi làm mới cùng môn nên bảng/hộp thoại không nháy.
+  const { currentData, isError, error } = useGetPositionTimetableSlotsQuery(positionId, { skip: !positionId });
   // Sắp trên bản sao: dữ liệu RTK Query bị đóng băng, sort tại chỗ sẽ ném lỗi.
-  const slots = useMemo(() => [...(data ?? [])].sort(compareSlots), [data]);
-
-  if (isLoading) {
-    return (
-      <p role="status" className="text-sm text-fg-muted">
-        Đang tải...
-      </p>
-    );
-  }
+  const slots = useMemo(() => [...(currentData ?? [])].sort(compareSlots), [currentData]);
 
   if (isError) {
     return (
       <p role="alert" className="text-sm text-danger">
         {apiErrorMessage(error, 'Không tải được danh sách tiết, vui lòng thử lại')}
+      </p>
+    );
+  }
+
+  if (currentData === undefined) {
+    return (
+      <p role="status" className="text-sm text-fg-muted">
+        Đang tải...
       </p>
     );
   }

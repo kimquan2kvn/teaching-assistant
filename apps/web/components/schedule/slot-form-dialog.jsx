@@ -15,18 +15,13 @@ const PERIODS = Array.from({ length: MAX_PERIODS_PER_DAY }, (_, index) => index 
 
 // Giá trị ô nhập khởi tạo từ props ngay lúc form được dựng. Radix gỡ nội dung khi đóng và `key` theo tiết, nên mỗi
 // lần mở (hoặc đổi sang tiết khác) là một form mới: không cần useEffect để đồng bộ lại state.
-function SlotForm({ positionId, slot, onOpenChange }) {
+function SlotForm({ slot, isSaving, onSave }) {
   const baseId = useId();
-  const isEditMode = Boolean(slot);
   const [dayOfWeek, setDayOfWeek] = useState(slot?.dayOfWeek ?? TIMETABLE_DAYS_OF_WEEK[0]);
   const [period, setPeriod] = useState(slot?.period ?? 1);
   const [effectiveFrom, setEffectiveFrom] = useState(() => (slot ? toDateOnly(slot.effectiveFrom) : todayDateOnly()));
   const [effectiveTo, setEffectiveTo] = useState(() => toDateOnly(slot?.effectiveTo));
   const [error, setError] = useState(null);
-
-  const [createSlot, { isLoading: isCreating }] = useCreateTimetableSlotMutation();
-  const [updateSlot, { isLoading: isUpdating }] = useUpdateTimetableSlotMutation();
-  const isSaving = isCreating || isUpdating;
 
   // Backend tính lại sổ báo giảng ngay trong lúc ghi (có thể vài giây): chặn gửi lần hai cả khi bấm Enter trong ô ngày.
   // Không tiền kiểm "đến ngày >= từ ngày" hay trùng tiết: backend quyết định (400/409) và message được hiện nguyên văn.
@@ -34,14 +29,8 @@ function SlotForm({ positionId, slot, onOpenChange }) {
     event.preventDefault();
     if (isSaving) return;
     setError(null);
-    const body = { dayOfWeek, period, effectiveFrom, effectiveTo: effectiveTo || null };
     try {
-      if (isEditMode) {
-        await updateSlot({ positionId, slotId: slot._id, ...body }).unwrap();
-      } else {
-        await createSlot({ positionId, ...body }).unwrap();
-      }
-      onOpenChange?.(false);
+      await onSave({ dayOfWeek, period, effectiveFrom, effectiveTo: effectiveTo || null });
     } catch (err) {
       setError(apiErrorMessage(err, 'Lưu tiết thất bại, vui lòng thử lại'));
     }
@@ -112,7 +101,7 @@ function SlotForm({ positionId, slot, onOpenChange }) {
 
       <DialogFooter className="mt-0">
         <DialogClose asChild>
-          <Button type="button" variant="outline">
+          <Button type="button" variant="outline" disabled={isSaving}>
             Huỷ
           </Button>
         </DialogClose>
@@ -125,11 +114,31 @@ function SlotForm({ positionId, slot, onOpenChange }) {
 }
 
 export function SlotFormDialog({ open, onOpenChange, positionId, slot }) {
+  const [createSlot, { isLoading: isCreating }] = useCreateTimetableSlotMutation();
+  const [updateSlot, { isLoading: isUpdating }] = useUpdateTimetableSlotMutation();
+  const isSaving = isCreating || isUpdating;
+
+  // Đang lưu thì không cho đóng (Esc, Huỷ, bấm ra ngoài): lỗi 400/409 trả về sau đó cần còn chỗ để hiện, và đóng rồi
+  // mở lại sẽ cho gửi trùng khi lần trước chưa xong. Cùng quy tắc với HolidayFormDialog.
+  function handleOpenChange(nextOpen) {
+    if (!nextOpen && isSaving) return;
+    onOpenChange?.(nextOpen);
+  }
+
+  async function handleSave(fields) {
+    if (slot) {
+      await updateSlot({ positionId, slotId: slot._id, ...fields }).unwrap();
+    } else {
+      await createSlot({ positionId, ...fields }).unwrap();
+    }
+    onOpenChange?.(false);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] overflow-y-auto">
         <DialogTitle>{slot ? 'Sửa tiết' : 'Thêm tiết'}</DialogTitle>
-        <SlotForm key={slot?._id ?? 'new'} positionId={positionId} slot={slot} onOpenChange={onOpenChange} />
+        <SlotForm key={slot?._id ?? 'new'} slot={slot} isSaving={isSaving} onSave={handleSave} />
       </DialogContent>
     </Dialog>
   );
