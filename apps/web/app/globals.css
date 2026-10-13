@@ -9,13 +9,41 @@
   --sidebar-bg: #1e2329;
   --sidebar-fg: #b7bdc6;
   --sidebar-active-fg: #f0b90b;
-  --border: #eaecef;
   --fg: #1e2329;
   --fg-muted: #848e9c;
   --success: #0ecb81;
   --success-soft: #e7faf2;
   --danger: #f6465d;
   --danger-soft: #feedef;
+
+  /* Token shadcn/ui: bộ kênh RGB (không phải hex) để Tailwind pha được độ mờ (`bg-primary/90`, `ring-ring/50`).
+     Giá trị phải khớp bảng màu Binance ở trên — canh bởi lib/theme-tokens.test.js. */
+  --background: 255 255 255;
+  --foreground: 30 35 41;
+  --card: 255 255 255;
+  --card-foreground: 30 35 41;
+  --popover: 255 255 255;
+  --popover-foreground: 30 35 41;
+  --primary: 240 185 11;
+  --primary-foreground: 0 0 0;
+  --secondary: 245 245 245;
+  --secondary-foreground: 30 35 41;
+  --muted: 245 245 245;
+  --muted-foreground: 132 142 156;
+  --accent: 253 247 226;
+  --accent-foreground: 30 35 41;
+  --destructive: 246 70 93;
+  --destructive-foreground: 255 255 255;
+  --border: 234 236 239;
+  --input: 234 236 239;
+  --ring: 240 185 11;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
 }
 
 body {
