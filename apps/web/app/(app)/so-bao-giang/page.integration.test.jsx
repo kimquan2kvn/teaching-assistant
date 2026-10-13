@@ -173,6 +173,42 @@ test('tích buổi Văn: PATCH vào vị trí của chính buổi đó; lưới 
   await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Đã thực hiện: Bài Văn 1' })).toBeChecked());
 });
 
+test('hai thao tác ghi chồng nhau (chuyển ngày Văn đang treo, tích Toán xong ngay): checkbox Toán giữ tích suốt thời gian đó, rồi dọn khi danh sách tải lại', async () => {
+  const { card, column } = renderPage();
+  await screen.findByText('Bài Văn 1');
+
+  // RTK Query hoãn invalidation của mutation vừa xong khi còn mutation khác đang chạy: chưa có refetch nào, checkbox
+  // không được quay về log.done cũ trong lúc đó.
+  const vanGate = deferred();
+  routes[`PATCH ${VAN_PATCH_PATH}`] = () => vanGate.promise;
+  fireEvent.dragStart(card('w-van'));
+  fireEvent.drop(column('2026-01-15'));
+  await waitFor(() => expect(callsOf('PATCH', VAN_PATCH_PATH)).toHaveLength(1));
+
+  // Đồng hồ chỉ giả Date và đứng yên: nhích để lúc lưu Toán xong khác mốc lúc tải danh sách ban đầu.
+  jest.setSystemTime(new Date('2026-01-14T03:00:30.000Z'));
+  const refetchGate = deferred();
+  routes['PATCH /positions/p-toan/lesson-logs/w-toan'] = () => jsonResponse(200, { ...TOAN_MON, done: true });
+  routes[`GET ${WEEK_PATH}`] = () => refetchGate.promise;
+  await userEvent.click(screen.getByRole('checkbox', { name: 'Đã thực hiện: Bài 1' }));
+  await waitFor(() => expect(callsOf('PATCH', '/positions/p-toan/lesson-logs/w-toan')).toHaveLength(1));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  });
+
+  expect(callsOf('GET', WEEK_PATH)).toHaveLength(1);
+  expect(screen.getByRole('checkbox', { name: 'Đã thực hiện: Bài 1' })).toBeChecked();
+
+  jest.setSystemTime(new Date('2026-01-14T03:01:00.000Z'));
+  vanGate.resolve(jsonResponse(200, { ...VAN_MON, date: '2026-01-15T00:00:00.000Z' }));
+  await waitFor(() => expect(callsOf('GET', WEEK_PATH)).toHaveLength(2));
+  expect(screen.getByRole('checkbox', { name: 'Đã thực hiện: Bài 1' })).toBeChecked();
+
+  // Danh sách tải lại xong thì giá trị dự định hết tác dụng: checkbox theo dữ liệu mới (cố ý trả done=false để thấy).
+  refetchGate.resolve(jsonResponse(200, [{ ...TOAN_MON, done: false }, VAN_MON]));
+  await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Đã thực hiện: Bài 1' })).not.toBeChecked());
+});
+
 test('thả thẻ Văn sang 15/01: PATCH {date} vào vị trí của buổi đó; tải lại xong thẻ nằm ở cột mới và có thông báo', async () => {
   const { card, column } = renderPage();
   await screen.findByText('Bài Văn 1');

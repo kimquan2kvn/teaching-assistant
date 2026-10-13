@@ -381,10 +381,12 @@ describe('tích, kéo-thả và chuyển ngày', () => {
 
   test('lưu xong mà danh sách đang tải lại: checkbox giữ trạng thái đã tích, tải xong thì theo dữ liệu', async () => {
     let isRefetching = false;
-    getWeekLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching }));
+    let refetchStartedAt;
+    getWeekLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching, startedTimeStamp: refetchStartedAt }));
     updateLessonLogMock.mockImplementation(() => ({
       unwrap: () => {
         isRefetching = true;
+        refetchStartedAt = Date.now();
         return Promise.resolve({});
       },
     }));

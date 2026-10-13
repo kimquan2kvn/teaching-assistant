@@ -491,3 +491,61 @@ describe('useMoveLogFlow', () => {
     expect(result.current.notice).toBeNull();
   });
 });
+
+describe('useLessonLogActions: listFetch (thao tác ghi chồng nhau làm invalidation bị hoãn)', () => {
+  const SETTLE_TIME = new Date('2026-01-14T03:00:30.000Z').getTime();
+  const BEFORE_SETTLE = SETTLE_TIME - 30_000;
+
+  function renderTracking(listFetch) {
+    return renderHook(({ listFetch: current }) => useLessonLogActions({ listFetch: current }), {
+      initialProps: { listFetch },
+    });
+  }
+
+  async function settleToggleAt(result, time) {
+    jest.useFakeTimers({ now: time });
+    const gate = holdUntilSettled();
+    act(() => {
+      result.current.toggleDone(LOG, true);
+    });
+    await act(async () => {
+      gate.resolve({});
+    });
+  }
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('lưu xong khi danh sách không đang tải và chưa có lần tải nào sau đó → vẫn giữ giá trị dự định', async () => {
+    const { result, rerender } = renderTracking({ isFetching: false, startedTimeStamp: BEFORE_SETTLE });
+
+    await settleToggleAt(result, SETTLE_TIME);
+    rerender({ listFetch: { isFetching: false, startedTimeStamp: BEFORE_SETTLE } });
+
+    expect(result.current.pending.get('l1')).toBe(true);
+  });
+
+  test('lần tải bắt đầu SAU lúc lưu xong đang chạy thì giữ; tải xong thì bỏ hẳn, tải khác (cache cũ) không làm sống lại', async () => {
+    const { result, rerender } = renderTracking({ isFetching: false, startedTimeStamp: BEFORE_SETTLE });
+    await settleToggleAt(result, SETTLE_TIME);
+
+    rerender({ listFetch: { isFetching: true, startedTimeStamp: SETTLE_TIME + 100 } });
+    expect(result.current.pending.get('l1')).toBe(true);
+
+    rerender({ listFetch: { isFetching: false, startedTimeStamp: SETTLE_TIME + 100 } });
+    expect(result.current.pending.size).toBe(0);
+
+    rerender({ listFetch: { isFetching: false, startedTimeStamp: BEFORE_SETTLE } });
+    expect(result.current.pending.size).toBe(0);
+  });
+
+  test('lần tải bắt đầu TRƯỚC lúc lưu xong (dữ liệu có thể cũ) kết thúc thì chưa bỏ giá trị dự định', async () => {
+    const { result, rerender } = renderTracking({ isFetching: true, startedTimeStamp: BEFORE_SETTLE });
+    await settleToggleAt(result, SETTLE_TIME);
+
+    rerender({ listFetch: { isFetching: false, startedTimeStamp: BEFORE_SETTLE } });
+
+    expect(result.current.pending.get('l1')).toBe(true);
+  });
+});

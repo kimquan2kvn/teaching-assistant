@@ -557,11 +557,13 @@ describe('tích "Đã thực hiện"', () => {
 
   test('lưu xong mà danh sách đang tải lại: checkbox giữ trạng thái đã tích (không nháy về giá trị cũ)', async () => {
     let isRefetching = false;
-    getLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching }));
+    let refetchStartedAt;
+    getLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching, startedTimeStamp: refetchStartedAt }));
     updateLessonLogMock.mockImplementation(() => ({
       unwrap: () => {
         // RTK Query bắt đầu tải lại danh sách ngay khi mutation hoàn tất (invalidatesTags).
         isRefetching = true;
+        refetchStartedAt = Date.now();
         return Promise.resolve({});
       },
     }));
@@ -577,10 +579,12 @@ describe('tích "Đã thực hiện"', () => {
 
   test('tải lại xong thì theo dữ liệu từ backend, giá trị dự định không bị giữ mãi', async () => {
     let isRefetching = false;
-    getLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching }));
+    let refetchStartedAt;
+    getLogsMock.mockImplementation(() => queryResult(WEEK_LOGS, { isFetching: isRefetching, startedTimeStamp: refetchStartedAt }));
     updateLessonLogMock.mockImplementation(() => ({
       unwrap: () => {
         isRefetching = true;
+        refetchStartedAt = Date.now();
         return Promise.resolve({});
       },
     }));

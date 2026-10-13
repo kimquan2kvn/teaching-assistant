@@ -110,7 +110,9 @@ export default function ClassLessonLogsPage({ params, searchParams }) {
   // của tuần mới (bảng trông như "tuần không có buổi nào") trong lúc tải.
   const logs = logsQuery.currentData ?? (logsQuery.isFetching ? undefined : logsQuery.data);
 
-  const actions = useLessonLogActions({ isRefreshing: Boolean(logsQuery.isFetching) });
+  const actions = useLessonLogActions({
+    listFetch: { isFetching: Boolean(logsQuery.isFetching), startedTimeStamp: logsQuery.startedTimeStamp },
+  });
   const flow = useMoveLogFlow(actions);
 
   // Providers khôi phục user bất đồng bộ: user null là "chưa biết" chứ chưa phải "không giữ môn nào".

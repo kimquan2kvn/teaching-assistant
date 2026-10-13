@@ -16,13 +16,26 @@ function withoutSettled(entries) {
   return kept;
 }
 
+// Lần tải lại do invalidation của chính mutation bắt đầu ngay khi mutation hoàn tất, có thể sớm hơn vài ms so với lúc
+// hook ghi nhận "đã lưu xong" (vài microtask sau) — dung sai này để lần tải đó vẫn được tính là sau khi lưu.
+const REFETCH_START_TOLERANCE_MS = 50;
+
+function isListRefreshedSince(listFetch, settledAt) {
+  return !listFetch.isFetching && (listFetch.startedTimeStamp ?? 0) >= settledAt - REFETCH_START_TOLERANCE_MS;
+}
+
 // Ghi tích "Đã thực hiện" / chuyển ngày của sổ báo giảng, dùng chung cho trang theo môn-lớp và trang theo tuần.
 // Không cập nhật lạc quan: bảng chỉ đổi khi backend trả thành công và danh sách được tải lại.
 //
 // `pending` giữ giá trị "Đã thực hiện" dự định của buổi đang lưu để checkbox không bật về giá trị cũ. Mutation xong thì
 // RTK Query mới bắt đầu tải lại danh sách, nên nếu trang truyền `isRefreshing` (isFetching của query danh sách) giá trị
 // dự định được giữ tới khi lần tải lại đó kết thúc — chặn lúc "nháy" giữa 2 thời điểm đó.
-export function useLessonLogActions({ isRefreshing = false } = {}) {
+//
+// Khi còn thao tác ghi khác chạy dở (vd PATCH chuyển ngày chờ backend tính lại), RTK Query hoãn invalidation của mutation
+// vừa xong nên KHÔNG có lần tải lại nào bắt đầu và isRefreshing vẫn false: giá trị dự định sẽ bị bỏ sớm. Trang truyền
+// thêm `listFetch` ({ isFetching, startedTimeStamp } của query danh sách) để hook chỉ bỏ giá trị dự định khi đã có một
+// lần tải BẮT ĐẦU sau lúc lưu xong và đã hoàn tất; có `listFetch` thì `isRefreshing` không còn dùng.
+export function useLessonLogActions({ isRefreshing = false, listFetch } = {}) {
   const [updateLessonLog] = useUpdateLessonLogMutation();
   const [busyIds, setBusyIds] = useState(() => new Set());
   const [pendingEntries, setPendingEntries] = useState(() => new Map());
@@ -39,13 +52,35 @@ export function useLessonLogActions({ isRefreshing = false } = {}) {
     if (wasRefreshing) setPendingEntries(withoutSettled);
   }
 
+  const isListFetching = listFetch?.isFetching;
+  const listStartedAt = listFetch?.startedTimeStamp;
+  const isTrackingList = listFetch !== undefined;
+  const isEntryExpired = (entry) =>
+    entry.settled &&
+    (isTrackingList
+      ? isListRefreshedSince({ isFetching: isListFetching, startedTimeStamp: listStartedAt }, entry.settledAt)
+      : !isRefreshing);
+
+  // Giá trị dự định đã hết tác dụng thì xóa hẳn (không chỉ ẩn): đổi sang query khác có startedTimeStamp cũ hơn
+  // (vd quay lại tuần đã cache) sẽ không làm nó sống lại.
+  if (isTrackingList && [...pendingEntries.values()].some(isEntryExpired)) {
+    setPendingEntries((previous) => {
+      const kept = new Map();
+      for (const [logId, entry] of previous) {
+        if (!isEntryExpired(entry)) kept.set(logId, entry);
+      }
+      return kept;
+    });
+  }
+
   const pending = useMemo(() => {
     const visible = new Map();
     for (const [logId, entry] of pendingEntries) {
-      if (!entry.settled || isRefreshing) visible.set(logId, entry.done);
+      if (!entry.settled || isTrackingList || isRefreshing) visible.set(logId, entry.done);
     }
     return visible;
-  }, [pendingEntries, isRefreshing]);
+    // isEntryExpired đóng trên các giá trị đã có trong deps (isTrackingList/isRefreshing/listFetch).
+  }, [pendingEntries, isRefreshing, isTrackingList]);
 
   function setEntry(logId, entry) {
     setPendingEntries((previous) => new Map(previous).set(logId, entry));
@@ -72,7 +107,7 @@ export function useLessonLogActions({ isRefreshing = false } = {}) {
 
     try {
       await updateLessonLog({ positionId: log.positionId, logId, ...changes }).unwrap();
-      if (isToggle) setEntry(logId, { done: intendedDone, settled: true });
+      if (isToggle) setEntry(logId, { done: intendedDone, settled: true, settledAt: Date.now() });
       return true;
     } catch (err) {
       setError(apiErrorMessage(err, UPDATE_FAILED_MESSAGE));

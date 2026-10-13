@@ -70,7 +70,9 @@ function TeacherLessonLogs() {
     [weekLogs, activeFilterId],
   );
 
-  const actions = useLessonLogActions({ isRefreshing: Boolean(weekQuery.isFetching) });
+  const actions = useLessonLogActions({
+    listFetch: { isFetching: Boolean(weekQuery.isFetching), startedTimeStamp: weekQuery.startedTimeStamp },
+  });
   const flow = useMoveLogFlow(actions);
 
   if (positionsQuery.isLoading) {
