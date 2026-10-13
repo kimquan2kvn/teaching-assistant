@@ -136,6 +136,39 @@ test('thêm mục bị 409 (2 người cùng thêm): hiện nguyên văn message
   expect(within(dialog).getByLabelText('Bài học')).toHaveDisplayValue('Bài 2');
 });
 
+test('đang lưu (store thật): Esc không đóng hộp thoại, POST đúng 1 lần, lỗi 409 trả về sau đó hiện trong hộp thoại còn mở', async () => {
+  let releasePost;
+  mockFetchRoutes({
+    'GET /classes/class-1/detail': () => respond(200, CLASS_DETAIL),
+    'GET /positions/p-toan/ppct': () => respond(200, [makePpctItem({ _id: 'i1', title: 'Bài 1' })]),
+    'POST /positions/p-toan/ppct': () =>
+      new Promise((resolve) => {
+        releasePost = () =>
+          respond(409, { statusCode: 409, message: 'Dữ liệu đã tồn tại, không thể ghi trùng' }).then(resolve);
+      }),
+  });
+  renderPage(GVBM_TOAN);
+  await screen.findByText('Bài 1');
+
+  await userEvent.click(screen.getByRole('button', { name: 'Thêm mục PPCT' }));
+  const dialog = await screen.findByRole('dialog');
+  await userEvent.type(within(dialog).getByLabelText('Tuần'), '1');
+  await userEvent.type(within(dialog).getByLabelText('Tiết thứ'), '2');
+  await userEvent.type(within(dialog).getByLabelText('Bài học'), 'Bài 2');
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Thêm' }));
+  await waitFor(() => expect(callsTo('POST', '/positions/p-toan/ppct')).toHaveLength(1));
+
+  await userEvent.keyboard('{Escape}');
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+  await act(async () => {
+    releasePost();
+  });
+  expect(await within(dialog).findByText('Dữ liệu đã tồn tại, không thể ghi trùng')).toBeInTheDocument();
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(callsTo('POST', '/positions/p-toan/ppct')).toHaveLength(1);
+});
+
 test('sửa và xóa ghi chú: PATCH mang note rỗng tường minh để backend xóa ghi chú đã lưu', async () => {
   mockFetchRoutes({
     'GET /classes/class-1/detail': () => respond(200, CLASS_DETAIL),

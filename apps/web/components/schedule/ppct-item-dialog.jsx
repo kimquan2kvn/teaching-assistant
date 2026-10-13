@@ -31,11 +31,10 @@ function toFormValues(item) {
 
 // Form nằm trong DialogContent (Radix gỡ nội dung khi đóng) nên mỗi lần mở là một lần khởi tạo state mới từ `item`:
 // không cần effect đồng bộ, và không thể sót dữ liệu/itemId của lần mở trước.
-function PpctItemForm({ positionId, item, onOpenChange }) {
+function PpctItemForm({ positionId, item, isSaving, onSavingChange, onOpenChange }) {
   const isEditMode = Boolean(item);
   const [values, setValues] = useState(() => toFormValues(item));
   const [errors, setErrors] = useState([]);
-  const [isSaving, setIsSaving] = useState(false);
   const [createPpctItem] = useCreatePpctItemMutation();
   const [updatePpctItem] = useUpdatePpctItemMutation();
 
@@ -50,7 +49,7 @@ function PpctItemForm({ positionId, item, onOpenChange }) {
     if (validationErrors.length > 0) return;
 
     const row = toCommitRow(values);
-    setIsSaving(true);
+    onSavingChange(true);
     try {
       if (isEditMode) {
         // PATCH: vắng khóa `note` thì backend giữ ghi chú cũ, chỉ `note: ''` mới xóa — toCommitRow bỏ khóa khi trống.
@@ -62,7 +61,7 @@ function PpctItemForm({ positionId, item, onOpenChange }) {
     } catch (err) {
       setErrors([apiErrorMessage(err, 'Lưu mục PPCT thất bại, vui lòng thử lại')]);
     } finally {
-      setIsSaving(false);
+      onSavingChange(false);
     }
   }
 
@@ -144,7 +143,7 @@ function PpctItemForm({ positionId, item, onOpenChange }) {
 
       <DialogFooter className="mt-2">
         <DialogClose asChild>
-          <Button type="button" variant="outline">
+          <Button type="button" variant="outline" disabled={isSaving}>
             Huỷ
           </Button>
         </DialogClose>
@@ -158,11 +157,26 @@ function PpctItemForm({ positionId, item, onOpenChange }) {
 
 // `item` có thì là sửa, không có là thêm mới. Thêm mới luôn nối vào cuối PPCT (backend quyết định thứ tự).
 export function PpctItemDialog({ open, onOpenChange, positionId, item }) {
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Đang lưu thì không cho đóng (Esc, Huỷ, bấm ra ngoài): lỗi trả về cần còn chỗ để hiện, và đóng rồi mở lại gửi lần hai
+  // sẽ tạo mục PPCT trùng vì backend chỉ nối vào cuối, không chống trùng.
+  function handleOpenChange(nextOpen) {
+    if (!nextOpen && isSaving) return;
+    onOpenChange?.(nextOpen);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] overflow-y-auto">
         <DialogTitle>{item ? 'Sửa mục PPCT' : 'Thêm mục PPCT'}</DialogTitle>
-        <PpctItemForm positionId={positionId} item={item} onOpenChange={onOpenChange} />
+        <PpctItemForm
+          positionId={positionId}
+          item={item}
+          isSaving={isSaving}
+          onSavingChange={setIsSaving}
+          onOpenChange={onOpenChange}
+        />
       </DialogContent>
     </Dialog>
   );

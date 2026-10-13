@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { makePpctItem } from '@/lib/test-fixtures/phase3';
 import { PpctItemDialog } from './ppct-item-dialog';
@@ -361,4 +361,102 @@ describe('lỗi và trạng thái đang lưu', () => {
     expect(createPpctItemMock).toHaveBeenCalledTimes(2);
     expect(screen.queryByText('Đã có lỗi xảy ra, vui lòng thử lại sau')).toBeNull();
   });
+});
+
+// Backend nối mục mới vào cuối PPCT và không chống trùng: đóng hộp thoại giữa chừng làm mất lỗi trả về, người dùng
+// mở lại gửi lần hai sẽ tạo mục trùng. Giống HolidayFormDialog: đang lưu thì không cho đóng.
+describe('đang lưu: không cho đóng hộp thoại', () => {
+  function pendingSave(mock) {
+    const control = {};
+    mock.mockReturnValue({
+      unwrap: () =>
+        new Promise((resolve, reject) => {
+          control.resolve = resolve;
+          control.reject = reject;
+        }),
+    });
+    return control;
+  }
+
+  test('(M1) Esc lúc đang lưu không đóng; lưu xong mới đóng, đúng 1 lần và chỉ gửi 1 yêu cầu', async () => {
+    const save = pendingSave(createPpctItemMock);
+    const { onOpenChange } = renderDialog();
+    await fillCreateForm();
+    await userEvent.click(screen.getByRole('button', { name: 'Thêm' }));
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await act(async () => {
+      save.resolve({});
+    });
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
+    expect(createPpctItemMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('(M1) nút Huỷ bị khóa lúc đang lưu và bấm vào không đóng hộp thoại', async () => {
+    pendingSave(updatePpctItemMock);
+    const { onOpenChange } = renderDialog({ item: makePpctItem() });
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+
+    const cancel = screen.getByRole('button', { name: 'Huỷ' });
+    expect(cancel).toBeDisabled();
+    await userEvent.click(cancel);
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  test('(M1) bấm ra ngoài hộp thoại lúc đang lưu không đóng', async () => {
+    pendingSave(createPpctItemMock);
+    const { onOpenChange } = renderDialog();
+    await fillCreateForm();
+    await userEvent.click(screen.getByRole('button', { name: 'Thêm' }));
+
+    // Radix chỉ nghe pointerdown ngoài hộp thoại sau một tick.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    fireEvent.pointerDown(document.body);
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  test('(M1) lưu lỗi sau khi người dùng đã bấm Esc: lỗi vẫn hiện trong hộp thoại, rồi Esc và Huỷ lại đóng được', async () => {
+    const save = pendingSave(createPpctItemMock);
+    const { onOpenChange } = renderDialog();
+    await fillCreateForm();
+    await userEvent.click(screen.getByRole('button', { name: 'Thêm' }));
+    await userEvent.keyboard('{Escape}');
+
+    await act(async () => {
+      save.reject({ status: 409, data: { message: 'Dữ liệu đã tồn tại, không thể ghi trùng' } });
+    });
+
+    expect(await screen.findByText('Dữ liệu đã tồn tại, không thể ghi trùng')).toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Huỷ' })).toBeEnabled();
+    await userEvent.keyboard('{Escape}');
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  test('đang rảnh: Esc và Huỷ đóng được hộp thoại (đối chứng của các ca đang lưu)', async () => {
+    const { onOpenChange } = renderDialog();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Huỷ' }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    onOpenChange.mockClear();
+    await userEvent.keyboard('{Escape}');
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
+test('hộp thoại có lề ngang trên điện thoại (không sát mép màn hình)', () => {
+  renderDialog();
+
+  expect(screen.getByRole('dialog')).toHaveClass('w-[calc(100%-2rem)]');
 });
