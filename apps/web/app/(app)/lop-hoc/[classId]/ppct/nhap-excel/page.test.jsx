@@ -305,7 +305,7 @@ describe('bước 1: chọn file và xem trước', () => {
     [{ status: 400, data: { message: 'File không đúng định dạng Excel (.xlsx)' } }, 'File không đúng định dạng Excel (.xlsx)'],
     [{ status: 400, data: { message: 'File có quá nhiều dòng (tối đa 500)' } }, 'File có quá nhiều dòng (tối đa 500)'],
     [{ status: 400, data: { message: 'Chưa chọn file để import' } }, 'Chưa chọn file để import'],
-    [{ status: 413, data: { message: 'File too large' } }, 'File quá lớn (tối đa 5MB)'],
+    [{ status: 413, data: { message: 'File too large' } }, 'Dữ liệu hoặc file gửi lên quá lớn'],
     [{ status: 400, data: { message: 'Multipart: Boundary not found' } }, 'Không đọc được file tải lên, vui lòng chọn lại file'],
     [{ status: 'FETCH_ERROR', error: 'TypeError: Failed to fetch' }, 'Đọc file thất bại, vui lòng thử lại'],
   ])('xem trước thất bại %j → hiện "%s", không có bảng', async (error, message) => {
