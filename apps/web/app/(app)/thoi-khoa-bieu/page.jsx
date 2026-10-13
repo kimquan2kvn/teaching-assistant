@@ -32,13 +32,21 @@ function TeacherTimetable() {
   // Ngày người dùng tự chọn bằng nút T2…T7 (chỉ có ý nghĩa dưới md); mặc định được dẫn xuất ở mỗi lần render.
   const [manualFocusedDate, setManualFocusedDate] = useState('');
 
-  const { data: weekData, isLoading, isFetching, isError, error } = useGetMyTimetableWeekQuery({ weekStart });
+  // currentData, KHÔNG phải data: lúc đổi tuần data còn là tuần trước, lưới sẽ đặt tiết cũ lên ngày của tuần mới và
+  // câu "tuần này chưa có tiết nào" tính trên dữ liệu tuần cũ.
+  const {
+    currentData: weekData,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+  } = useGetMyTimetableWeekQuery({ weekStart });
   const { data: schoolYears, isError: isSchoolYearsError } = useGetSchoolYearsQuery();
   const currentYearId = schoolYears?.find((year) => year.isCurrent)?._id;
   const { data: holidays, isError: isHolidaysError } = useGetHolidaysQuery(currentYearId, {
     skip: !currentYearId,
   });
-  const { data: myPositions } = useGetMyPositionsQuery();
+  const { data: myPositions, isError: isPositionsError, error: positionsError } = useGetMyPositionsQuery();
 
   const subjectPositions = useMemo(
     () => (myPositions ?? []).filter((position) => position.type === 'SUBJECT'),
@@ -72,7 +80,7 @@ function TeacherTimetable() {
       </p>
     );
   } else {
-    // Đổi tuần: RTK Query giữ dữ liệu tuần cũ trong lúc tải tuần mới nên làm mờ lưới và báo aria-busy.
+    // Đổi tuần: chưa có currentData của tuần mới thì dựng khung lưới rỗng, làm mờ và báo aria-busy.
     weekContent = (
       <div className={cn('mt-4', isFetching && 'opacity-60')} aria-busy={Boolean(isFetching)}>
         <TimetableGrid
@@ -103,6 +111,12 @@ function TeacherTimetable() {
             Tham gia lớp
           </Link>
         </div>
+      )}
+
+      {isPositionsError && (
+        <p role="alert" className="mt-4 text-sm text-danger">
+          {apiErrorMessage(positionsError, 'Không tải được danh sách môn, vui lòng thử lại')}
+        </p>
       )}
 
       {isWeekEmpty && <p className="mt-4 text-sm text-fg-muted">{EMPTY_WEEK_TEXT}</p>}
