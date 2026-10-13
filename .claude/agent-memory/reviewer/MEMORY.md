@@ -8,3 +8,4 @@
 - [RTK data vs currentData in shared panels](pattern_rtk_data_vs_currentdata_shared_panel.md) — stale rows after id switch; also delayed invalidation defeats "pending until refetch" when writes overlap.
 - [Cross-feature tag invalidation](pattern_cross_feature_tag_invalidation.md) — 'TeacherWeek' not invalidated by join/release; grep membership-changing mutations for new aggregate tags.
 - [Integration branch moves mid-review](project_integration_branch_moves_mid_review.md) — orchestrator merges into the shared worktree during review; pin and report the reviewed SHA.
+- [shadcn swap: yellow primary + footer](pattern_shadcn_yellow_primary_and_footer.md) — stock shadcn on #F0B90B: invisible checkbox border/focus ring, 2:1 success Alert, DialogFooter lost mt-6/gap.
