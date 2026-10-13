@@ -20,3 +20,20 @@ test.each(['/dang-nhap', '/dang-ky'])('không có cookie + %s → KHÔNG redirec
   const res = middleware(req);
   expect(res?.headers.get('location')).toBeNull();
 });
+
+describe('config.matcher', () => {
+  // Next biên dịch matcher thành regex neo đầu/cuối; mô phỏng đúng cách đó.
+  const { config } = require('./middleware');
+  const matches = (path) => new RegExp(`^${config.matcher[0]}$`).test(path);
+
+  test.each(['/', '/lop-hoc', '/lop-hoc/abc/ppct', '/lich-nam-hoc'])('%s đi qua middleware', (path) => {
+    expect(matches(path)).toBe(true);
+  });
+
+  test.each(['/api/auth/login', '/api/positions/mine', '/_next/static/x.js', '/favicon.ico'])(
+    '%s bị bỏ qua (không chuyển hướng về đăng nhập)',
+    (path) => {
+      expect(matches(path)).toBe(false);
+    },
+  );
+});

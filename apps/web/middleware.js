@@ -11,4 +11,5 @@ export function middleware(request) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ['/((?!_next|favicon.ico).*)'] };
+// `api` được bỏ qua: request /api/* (proxy sang API khi demo qua tunnel) không được chuyển hướng về trang đăng nhập.
+export const config = { matcher: ['/((?!_next|api/|favicon.ico).*)'] };
