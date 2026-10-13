@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useImportPreviewMutation, useImportConfirmMutation } from '@/lib/store/students-api';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { formatDate } from '@/lib/utils';
+import { apiErrorMessage, formatDate } from '@/lib/utils';
 
 export default function NhapExcelPage({ params }) {
   const { classId } = params;
@@ -30,7 +30,7 @@ export default function NhapExcelPage({ params }) {
       setRows(result.rows);
     } catch (err) {
       setRows(null);
-      setPreviewError(err?.data?.message ?? 'Đọc file thất bại, vui lòng thử lại');
+      setPreviewError(apiErrorMessage(err, 'Đọc file thất bại, vui lòng thử lại'));
     }
   }
 
@@ -46,7 +46,7 @@ export default function NhapExcelPage({ params }) {
       // KHÔNG setRows(null) ở đây: dữ liệu đã sửa đổi giữa lúc preview và confirm (hiếm, race condition) khiến
       // confirm bị từ chối, nhưng người dùng vẫn cần thấy lại bảng preview để biết dòng nào đã nhập để sửa tiếp,
       // thay vì phải chọn lại file từ đầu.
-      setConfirmError(err?.data?.message ?? 'Xác nhận nhập thất bại, vui lòng thử lại');
+      setConfirmError(apiErrorMessage(err, 'Xác nhận nhập thất bại, vui lòng thử lại'));
     }
   }
 
@@ -103,7 +103,7 @@ export default function NhapExcelPage({ params }) {
                 return (
                   <tr
                     key={row.rowNumber}
-                    className={rowHasErrors ? 'border-b border-border bg-danger/10' : 'border-b border-border'}
+                    className={rowHasErrors ? 'border-b border-border bg-danger-soft' : 'border-b border-border'}
                   >
                     <td className="py-2">{row.rowNumber}</td>
                     <td className="py-2">{row.fullName}</td>

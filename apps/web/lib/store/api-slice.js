@@ -58,6 +58,13 @@ export const apiSlice = createApi({
     'ConductRating',
     'Punishments',
     'Dashboard',
+    'SchoolYears',
+    'Holidays',
+    'CalendarStats',
+    'TimetableSlots',
+    'PpctItems',
+    'LessonLogs',
+    'TeacherWeek',
   ],
   endpoints: (builder) => ({
     login: builder.mutation({ query: (body) => ({ url: '/auth/login', method: 'POST', body }) }),

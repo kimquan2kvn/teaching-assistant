@@ -228,3 +228,36 @@ Chi tiết: `docs/superpowers/specs/2026-10-11-phase3-design.md` (đã duyệt 2
   2026-10-11 (riêng câu 2 đã được điều chỉnh cho thao tác thêm mục, xem bullet ngay trên). Câu 5 (403 tiếng Anh
   `Forbidden resource` của guard, tồn tại từ Phase 1–2) và câu 6 (`reassign` có thể tạo slot trùng giờ vì kiểm tra chỉ
   chạy lúc ghi slot) vẫn mở, ngoài phạm vi Phase 3.
+
+## Sub-project 5 (UI cho Phase 3)
+
+Chi tiết: `docs/superpowers/plans/2026-10-11-phase3-ui.md` (mục "Giả định UI mới" A1–A15 và "Kết quả review cuối").
+
+- **Bản đồ route**: dữ liệu theo giáo viên/toàn trường ở route gốc (`/lich-nam-hoc`, `/thoi-khoa-bieu`, `/so-bao-giang`,
+  `/phan-phoi-chuong-trinh`); dữ liệu theo vị trí ở `/lop-hoc/[classId]/{ppct,thoi-khoa-bieu,so-bao-giang}` để GVCN/ADMIN
+  xem được môn khác. Link giữa các trang mang `?positionId=` và trang đích chọn sẵn đúng môn đó. `/hoc-sinh` vẫn để Phase 5.
+- **"Cột giờ" của lưới TKB = nhãn "Tiết 1…10"**: dữ liệu chưa có giờ vào/ra từng tiết. Ô chỉ hiện khi tiết còn hiệu lực đúng
+  ngày đó; ngày nghỉ hiện "Nghỉ"; tên bài gắn vào ô tiết đầu tiên của môn trong ngày (`LessonLog` không có trường tiết).
+- **Điện thoại**: lưới TKB một ngày/lần dưới `md` (nút `T2…T7`), 6 cột từ `md`; bảng PPCT ẩn 2 cột dài dưới `md` nhưng hiện
+  "Yêu cầu cần đạt"/"Ghi chú" ngay dưới tên bài để người chỉ xem (GVCN) vẫn đọc được; sổ báo giảng dạng thẻ.
+- **Lọc tháng/năm**: tuần thuộc tháng chứa Thứ Năm của nó (quy ước ISO) để chọn tháng ↔ tuần không quay vòng; danh sách năm
+  = năm đang xem ±1.
+- **Nhãn CK/TC/CĐ** suy từ tiền tố `periodLabel` chỉ để hiển thị; thuật toán xếp tiết vẫn bỏ qua nhãn.
+- **PPCT**: mục mới luôn thêm cuối (không chèn/đổi thứ tự ở v1); import Excel có xem trước sửa được từng ô, tiền kiểm phía
+  client chỉ cho ràng buộc từng ô và dùng đúng message của backend; không có nút tải file mẫu (chỉ liệt kê tiêu đề cột).
+- **Chỉnh tay ngày dạy**: kéo-thả HTML5 trong tuần đang hiển thị (máy tính); "bấm-chọn cho điện thoại" = nút `Chuyển ngày`
+  mở hộp thoại chọn ngày (mọi thiết bị, sang được tuần khác); không thêm thư viện kéo-thả.
+- **FE không tiền kiểm nghiệp vụ** (ngày chuyển hợp lệ, ngày kết thúc ≥ bắt đầu, trùng tiết): backend trả 400/409, FE hiện
+  nguyên văn (cả dạng có tiền tố `Dữ liệu gửi lên không hợp lệ: ` của zod) và không đổi giao diện khi lỗi.
+- **Ghi dữ liệu**: backend tính lại sổ báo giảng đồng bộ (có thể vài giây) nên mọi nút ghi chặn bấm đúp và hộp thoại không
+  đóng được khi đang lưu/xóa. Dữ liệu theo khóa (năm học/môn/tuần) đọc `currentData` của RTK Query để không bao giờ hiện dữ
+  liệu cũ dưới nhãn mới hay gửi thao tác ghi tới vị trí sai.
+- **Quyền hiển thị**: GVCN chỉ đọc; GVBM sửa đúng vị trí mình; ADMIN sửa mọi vị trí SUBJECT và ngày nghỉ; `/thoi-khoa-bieu` và
+  `/so-bao-giang` chỉ giáo viên (ADMIN/STUDENT thấy câu giải thích, không bắn request); STUDENT không thấy mục nào. Backend
+  vẫn là nơi chặn thật. ADMIN vào trang lớp qua link "Xem lớp" ở trang vị trí giáo viên (chưa có danh sách lớp toàn trường).
+- **Thông báo lỗi**: 403 tiếng Anh của guard (`Forbidden resource`) → `Bạn không có quyền thực hiện thao tác này`; 413/lỗi
+  multipart tiếng Anh → câu tiếng Việt cố định; message tiếng Việt của backend luôn giữ nguyên văn.
+- **Thẻ "số ngày dạy còn lại"** tính từ hôm nay (backend mặc định giờ VN); chưa có UI bật/tắt `saturdayIsSchoolDay`.
+- **Token màu `--brand-soft/--success-soft/--danger-soft`** thay modifier độ mờ trên màu `var()` (Tailwind không sinh CSS cho
+  `bg-brand/10`); đã vá 7 vị trí sẵn có của Phase 1/2.
+- **Jest của web ghim múi giờ `Asia/Ho_Chi_Minh`** (app chỉ dùng tại VN; CI chạy UTC làm 3 test "hôm nay" của Phase 2 đỏ).

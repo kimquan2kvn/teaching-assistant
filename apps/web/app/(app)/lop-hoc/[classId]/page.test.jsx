@@ -187,6 +187,35 @@ test('hiện dải tab trỏ sang 5 trang con Phase 2 với đúng href', () => 
   );
 });
 
+test('hiện thêm 3 tab Phase 3 (PPCT, thời khóa biểu môn, sổ báo giảng) với đúng href', () => {
+  getClassDetailQueryMock.mockReturnValue({
+    data: {
+      class: { id: 'class-1', code: 'ABC123', name: 'Lớp 10A1' },
+      positions: [
+        { id: 'pos-1', type: 'HOMEROOM', subject: null, holder: { id: 'teacher-1', fullName: 'Nguyễn Văn A' } },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+    error: undefined,
+  });
+
+  renderPage({ classId: 'class-1' });
+
+  expect(screen.getByRole('link', { name: 'Phân phối chương trình' })).toHaveAttribute(
+    'href',
+    '/lop-hoc/class-1/ppct',
+  );
+  expect(screen.getByRole('link', { name: 'Thời khóa biểu môn' })).toHaveAttribute(
+    'href',
+    '/lop-hoc/class-1/thoi-khoa-bieu',
+  );
+  expect(screen.getByRole('link', { name: 'Sổ báo giảng' })).toHaveAttribute(
+    'href',
+    '/lop-hoc/class-1/so-bao-giang',
+  );
+});
+
 test('query trả lỗi 404 hiện "Không tìm thấy lớp"', () => {
   getClassDetailQueryMock.mockReturnValue({
     data: undefined,

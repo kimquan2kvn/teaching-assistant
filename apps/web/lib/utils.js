@@ -57,3 +57,61 @@ export function formatSignedPoints(points) {
   if (points > 0) return `+${points}`;
   return String(points);
 }
+
+const FORBIDDEN_MESSAGE = 'Bạn không có quyền thực hiện thao tác này';
+// 413 đến từ cả upload file (multer, giới hạn 5MB) lẫn body JSON (commit import) hoặc reverse proxy, nên câu dự phòng
+// phải trung tính, không nhắc riêng "file" hay con số 5MB.
+const PAYLOAD_TOO_LARGE_MESSAGE = 'Dữ liệu hoặc file gửi lên quá lớn';
+const UNREADABLE_UPLOAD_MESSAGE = 'Không đọc được file tải lên, vui lòng chọn lại file';
+
+function containsNonAscii(text) {
+  return Array.from(text).some((char) => char.charCodeAt(0) > 0x7f);
+}
+
+// Thông báo lỗi hiển thị cho người dùng từ lỗi RTK Query (`err` của `.unwrap()`). 403 do guard của Nest trả
+// message tiếng Anh ("Forbidden resource"), còn 403 do service chủ động ném (vd "Bạn không giữ vị trí này") đã là
+// tiếng Việt: message có ký tự ngoài ASCII được coi là tiếng Việt và giữ nguyên, ngược lại thay bằng câu cố định.
+// Cùng quy tắc cho 413 (multer trả "File too large"), kể cả khi reverse proxy chặn trước bằng trang HTML — khi đó
+// RTK Query báo PARSING_ERROR và mã thật nằm ở `originalStatus`. Upload multipart hỏng, multer/busboy trả message
+// tiếng Anh bắt đầu bằng "Multipart" (vd "Multipart: Boundary not found"), cũng đổi sang câu cố định.
+// Mã khác: hiện nguyên văn message của backend; thiếu/rỗng/không phải chuỗi (lỗi mạng, ...) thì dùng `fallback`.
+export function apiErrorMessage(err, fallback) {
+  const message = err?.data?.message;
+  const hasMessage = typeof message === 'string' && message !== '';
+  const hasVietnameseMessage = hasMessage && containsNonAscii(message);
+  if (err?.status === 403) {
+    return hasVietnameseMessage ? message : FORBIDDEN_MESSAGE;
+  }
+  if (err?.status === 413 || err?.originalStatus === 413) {
+    return hasVietnameseMessage ? message : PAYLOAD_TOO_LARGE_MESSAGE;
+  }
+  if (hasMessage && message.startsWith('Multipart')) return UNREADABLE_UPLOAD_MESSAGE;
+  return hasMessage ? message : fallback;
+}
+
+function isPositionHolder(position, currentUser) {
+  return Boolean(currentUser?.id) && position?.holder?.id === currentUser.id;
+}
+
+// Có hiện control SỬA PPCT/TKB/sổ báo giảng của vị trí này không (chỉ ẩn/hiện UI — backend vẫn là nơi chặn thật).
+// ADMIN sửa mọi vị trí SUBJECT, GVBM chỉ sửa vị trí SUBJECT mình giữ (khớp @RequirePositionOwner('SELF')); vị trí
+// HOMEROOM không có PPCT/TKB nên không ai sửa được, kể cả GVCN và ADMIN.
+export function canEditPosition(position, currentUser) {
+  if (!position || !currentUser) return false;
+  if (position.type !== 'SUBJECT') return false;
+  return currentUser.role === 'ADMIN' || isPositionHolder(position, currentUser);
+}
+
+// Các vị trí SUBJECT của 1 lớp (response useGetClassDetailQuery) mà currentUser ĐỌC được: ADMIN và GVCN của lớp
+// đọc mọi môn, GVBM chỉ đọc môn mình giữ (môn khác backend trả 403 nên không đưa vào bộ chọn). Không bao giờ có
+// HOMEROOM trong kết quả.
+export function getReadableSubjectPositions(positions, currentUser) {
+  if (!currentUser) return [];
+  const all = positions ?? [];
+  const subjects = all.filter((position) => position.type === 'SUBJECT');
+  const isHomeroomHolder = all.some(
+    (position) => position.type === 'HOMEROOM' && isPositionHolder(position, currentUser),
+  );
+  if (currentUser.role === 'ADMIN' || isHomeroomHolder) return subjects;
+  return subjects.filter((position) => isPositionHolder(position, currentUser));
+}
