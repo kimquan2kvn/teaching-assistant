@@ -7,6 +7,7 @@ import { useGetTeacherWeekLessonLogsQuery } from '@/lib/store/lesson-logs-api';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { useGetMyPositionsQuery } from '@/lib/store/positions-api';
 import { RoleGate } from '@/components/layout/role-gate';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { LessonLogFeedback } from '@/components/schedule/lesson-log-feedback';
@@ -97,9 +98,11 @@ function TeacherLessonLogs() {
   if (positionsQuery.isError && positionsQuery.data === undefined) {
     return (
       <PageNotice>
-        <p role="alert" className="mt-2 text-sm text-danger">
-          {apiErrorMessage(positionsQuery.error, 'Không tải được danh sách môn, vui lòng thử lại')}
-        </p>
+        <Alert variant="destructive" className="mt-2">
+          <AlertDescription>
+            {apiErrorMessage(positionsQuery.error, 'Không tải được danh sách môn, vui lòng thử lại')}
+          </AlertDescription>
+        </Alert>
       </PageNotice>
     );
   }
@@ -130,9 +133,11 @@ function TeacherLessonLogs() {
   function renderLogs() {
     if (weekQuery.isError) {
       return (
-        <p role="alert" className="mt-4 text-sm text-danger">
-          {apiErrorMessage(weekQuery.error, 'Không tải được sổ báo giảng, vui lòng thử lại')}
-        </p>
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>
+            {apiErrorMessage(weekQuery.error, 'Không tải được sổ báo giảng, vui lòng thử lại')}
+          </AlertDescription>
+        </Alert>
       );
     }
     if (!visibleLogs) {

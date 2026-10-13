@@ -135,6 +135,16 @@ describe('người sửa được (canEdit)', () => {
     expect(onToggleDone).toHaveBeenCalledWith(log, true);
   });
 
+  test('checkbox là Checkbox shadcn (Radix) và nhãn "Đã thực hiện" bấm vào cũng tích được', async () => {
+    const { log, onToggleDone } = renderCard({ canEdit: true });
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Đã thực hiện: Bài 1' });
+    expect(checkbox).toHaveAttribute('data-state', 'unchecked');
+    await userEvent.click(screen.getByText('Đã thực hiện'));
+
+    expect(onToggleDone).toHaveBeenCalledWith(log, true);
+  });
+
   test('buổi đã tích: checkbox đang checked, bấm thì gọi onToggleDone(log, false)', async () => {
     const { log, onToggleDone } = renderCard({ log: makeLessonLog({ done: true }), canEdit: true });
 

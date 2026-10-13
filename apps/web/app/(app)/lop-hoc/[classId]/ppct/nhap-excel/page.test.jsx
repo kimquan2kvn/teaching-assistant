@@ -314,7 +314,9 @@ describe('bước 1: chọn file và xem trước', () => {
 
     await chooseFileAndPreview();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(message);
+    expect(alert).toHaveClass('bg-danger-soft', 'text-destructive');
     expect(screen.queryByRole('table')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Xác nhận nhập' })).toBeNull();
   });
@@ -534,7 +536,7 @@ describe('bước 2: bảng xem trước sửa được', () => {
   test('bảng xem trước cuộn ngang được trên màn hình hẹp (mobile), không làm tràn cả trang', async () => {
     const table = await openPreview([makeValidRow()]);
 
-    expect(table.closest('[class*="overflow-x-auto"]')).not.toBeNull();
+    expect(table.closest('[class*="overflow-auto"]')).not.toBeNull();
   });
 });
 
