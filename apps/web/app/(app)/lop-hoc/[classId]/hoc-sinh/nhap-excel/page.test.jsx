@@ -136,7 +136,7 @@ test('bảng xem trước cuộn ngang được trên màn hình hẹp (mobile),
   await userEvent.click(screen.getByRole('button', { name: 'Xem trước' }));
 
   const table = await screen.findByRole('table');
-  expect(table.closest('[class*="overflow-x-auto"]')).not.toBeNull();
+  expect(table.closest('.overflow-auto, .overflow-x-auto')).not.toBeNull();
 });
 
 test('confirm thất bại (400) giữ nguyên bảng preview trên màn hình, hiện ĐÚNG message lỗi backend', async () => {

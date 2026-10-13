@@ -8,7 +8,17 @@ import { useReleasePositionMutation } from '@/lib/store/positions-api';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 
 // Các trang con của 1 lớp cụ thể (5 trang Phase 2 + 3 trang Phase 3 theo môn-lớp) — nơi người dùng THỰC SỰ đi vào
 // sau khi chọn lớp từ /lop-hoc.
@@ -52,9 +62,15 @@ function ReleasePositionButton({ position }) {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle>Ngừng phụ trách?</DialogTitle>
-        <p className="text-sm text-fg-muted">Bạn sẽ không còn phụ trách vị trí này.</p>
-        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+        <DialogHeader>
+          <DialogTitle>Ngừng phụ trách?</DialogTitle>
+          <DialogDescription>Bạn sẽ không còn phụ trách vị trí này.</DialogDescription>
+        </DialogHeader>
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="outline">

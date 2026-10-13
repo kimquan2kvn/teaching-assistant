@@ -8,6 +8,7 @@ import { useGetClassDetailQuery } from '@/lib/store/classes-api';
 import { useGetStudentsQuery } from '@/lib/store/students-api';
 import { selectCurrentUser } from '@/lib/store/auth-slice';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn, formatDate } from '@/lib/utils';
 import { StudentFormDialog } from '@/components/students/student-form-dialog';
 import { TransferDialog } from '@/components/students/transfer-dialog';
@@ -92,24 +93,24 @@ export default function HocSinhPage() {
       {studentsLoading ? (
         <p className="mt-4 text-sm text-fg-muted">Đang tải...</p>
       ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-fg-muted">
-                <th className="py-2 pr-4">STT</th>
-                <th className="py-2 pr-4">Họ tên</th>
-                <th className="py-2 pr-4">Ngày sinh</th>
-                {canManage && <th className="py-2 pr-4">Hành động</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {visibleStudents.map((student, index) => (
-                <tr key={student._id} className="border-t border-border">
-                  <td className="py-2 pr-4">{index + 1}</td>
-                  <td className="py-2 pr-4">{student.fullName}</td>
-                  <td className="py-2 pr-4">{formatDate(student.dob)}</td>
-                  {canManage && (
-                    <td className="flex gap-2 py-2 pr-4">
+        <Table className="mt-4">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>STT</TableHead>
+              <TableHead>Họ tên</TableHead>
+              <TableHead>Ngày sinh</TableHead>
+              {canManage && <TableHead>Hành động</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visibleStudents.map((student, index) => (
+              <TableRow key={student._id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{student.fullName}</TableCell>
+                <TableCell>{formatDate(student.dob)}</TableCell>
+                {canManage && (
+                  <TableCell>
+                    <div className="flex gap-2">
                       <Button
                         type="button"
                         size="sm"
@@ -126,13 +127,13 @@ export default function HocSinhPage() {
                       >
                         Đánh dấu chuyển đi
                       </Button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {formDialogState && (

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useCreateStudentMutation, useUpdateStudentMutation } from '@/lib/store/students-api';
 
@@ -50,7 +51,9 @@ export function StudentFormDialog({ classId, student, open, onOpenChange }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle>{isEditMode ? 'Sửa hồ sơ học sinh' : 'Thêm học sinh'}</DialogTitle>
+        <DialogHeader>
+          <DialogTitle>{isEditMode ? 'Sửa hồ sơ học sinh' : 'Thêm học sinh'}</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <Label htmlFor="student-form-full-name">Họ và tên</Label>
@@ -70,7 +73,11 @@ export function StudentFormDialog({ classId, student, open, onOpenChange }) {
               onChange={(event) => setDob(event.target.value)}
             />
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">

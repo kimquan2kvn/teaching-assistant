@@ -10,6 +10,13 @@ jest.mock('@/lib/store/classes-api', () => ({
   useCreateClassMutation: () => [createClassMock, { isLoading: false }],
 }));
 
+// jsdom không có ResizeObserver; Radix Checkbox đặt trong <form> dùng nó để đo input ẩn.
+global.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 beforeEach(() => {
   createClassMock.mockClear();
 });
@@ -33,7 +40,10 @@ test('submit form gọi đúng createClass({name, claimHomeroom})', async () => 
   renderPage();
 
   await userEvent.type(screen.getByPlaceholderText('Tên lớp'), '11B1');
-  await userEvent.click(screen.getByRole('checkbox', { name: 'Bạn có phải GVCN lớp này không?' }));
+  const checkbox = screen.getByRole('checkbox', { name: 'Bạn có phải GVCN lớp này không?' });
+  expect(checkbox).not.toBeChecked();
+  await userEvent.click(checkbox);
+  expect(checkbox).toBeChecked();
   await userEvent.click(screen.getByRole('button', { name: 'Tạo lớp' }));
 
   expect(createClassMock).toHaveBeenCalledWith({ name: '11B1', claimHomeroom: true });
@@ -89,4 +99,5 @@ test('lỗi từ backend (vd tên rỗng bị zod chặn) hiện đúng error.da
   await userEvent.click(screen.getByRole('button', { name: 'Tạo lớp' }));
 
   expect(await screen.findByText('Tên lớp không được để trống')).toBeInTheDocument();
+  expect(screen.getByRole('alert')).toHaveTextContent('Tên lớp không được để trống');
 });

@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useGetTeachersQuery, useSetTeacherActiveMutation } from '@/lib/store/admin-api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function QuanLyGiaoVienPage() {
   const { data: teachers, isLoading, isError } = useGetTeachersQuery();
@@ -29,65 +31,75 @@ export default function QuanLyGiaoVienPage() {
   }
 
   if (isError) {
-    return <p className="p-4 text-sm text-danger">Không tải được danh sách giáo viên</p>;
+    return (
+      <div className="p-4">
+        <Alert variant="destructive">
+          <AlertDescription>Không tải được danh sách giáo viên</AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="mb-4 font-heading text-xl font-semibold">Quản lý giáo viên</h1>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-border text-fg-muted">
-              <th className="py-2 font-medium">Tên đăng nhập</th>
-              <th className="py-2 font-medium">Họ tên</th>
-              <th className="py-2 font-medium">Trạng thái</th>
-              <th className="py-2 font-medium" />
-              <th className="py-2 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {teachers?.map((teacher) => (
-              <tr key={teacher.id} className="border-b border-border">
-                <td className="py-2">{teacher.username}</td>
-                <td className="py-2">{teacher.fullName}</td>
-                <td className="py-2">
-                  <Badge variant={teacher.isActive ? 'success' : 'danger'}>
-                    {teacher.isActive ? 'Hoạt động' : 'Đã khóa'}
-                  </Badge>
-                </td>
-                <td className="py-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setError(null);
-                      setConfirmTeacher(teacher);
-                    }}
-                  >
-                    {teacher.isActive ? 'Khóa' : 'Mở khóa'}
-                  </Button>
-                </td>
-                <td className="py-2">
-                  <Link href={`/quan-ly-giao-vien/${teacher.id}`} className="text-brand underline">
-                    Xem vị trí
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Tên đăng nhập</TableHead>
+            <TableHead>Họ tên</TableHead>
+            <TableHead>Trạng thái</TableHead>
+            <TableHead />
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {teachers?.map((teacher) => (
+            <TableRow key={teacher.id}>
+              <TableCell>{teacher.username}</TableCell>
+              <TableCell>{teacher.fullName}</TableCell>
+              <TableCell>
+                <Badge variant={teacher.isActive ? 'success' : 'danger'}>
+                  {teacher.isActive ? 'Hoạt động' : 'Đã khóa'}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setError(null);
+                    setConfirmTeacher(teacher);
+                  }}
+                >
+                  {teacher.isActive ? 'Khóa' : 'Mở khóa'}
+                </Button>
+              </TableCell>
+              <TableCell>
+                <Link href={`/quan-ly-giao-vien/${teacher.id}`} className="text-brand underline">
+                  Xem vị trí
+                </Link>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
       <Dialog open={!!confirmTeacher} onOpenChange={(open) => !open && setConfirmTeacher(null)}>
         <DialogContent>
-          <DialogTitle>
-            {confirmTeacher?.isActive
-              ? 'Khóa tài khoản giáo viên này?'
-              : 'Mở khóa tài khoản giáo viên này?'}
-          </DialogTitle>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          <DialogHeader>
+            <DialogTitle>
+              {confirmTeacher?.isActive
+                ? 'Khóa tài khoản giáo viên này?'
+                : 'Mở khóa tài khoản giáo viên này?'}
+            </DialogTitle>
+          </DialogHeader>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">
